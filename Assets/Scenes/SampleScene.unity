@@ -600,7 +600,7 @@ MonoBehaviour:
   attenuation: {x: 1, y: 0.09, z: 0.032}
   spotAngle: 30
   spotInnerAngle: 25
-  castShadows: 0
+  castShadows: 1
   shadowMap: {fileID: 0}
   viewProjMatrix:
     e00: 0
@@ -1207,7 +1207,7 @@ MonoBehaviour:
   attenuation: {x: 1, y: 0.09, z: 0.032}
   spotAngle: 30
   spotInnerAngle: 25
-  castShadows: 0
+  castShadows: 1
   shadowMap: {fileID: 0}
   viewProjMatrix:
     e00: 0
@@ -1432,13 +1432,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1066730521}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.3553932, y: 0.4711968, z: -0.21523377, w: -0.7780384}
-  m_LocalPosition: {x: 0, y: 66.8, z: 0}
+  m_LocalRotation: {x: -0.91580284, y: 0, z: 0, w: -0.40162817}
+  m_LocalPosition: {x: -9.89, y: 30, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: -131.46, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: -227.36, y: 0, z: 0}
 --- !u!114 &1066730525
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1492,7 +1492,7 @@ MonoBehaviour:
   attenuation: {x: 1, y: 0.09, z: 0.032}
   spotAngle: 30
   spotInnerAngle: 25
-  castShadows: 0
+  castShadows: 1
   shadowMap: {fileID: 0}
   viewProjMatrix:
     e00: 0
