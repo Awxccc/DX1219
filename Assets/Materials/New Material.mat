@@ -138,7 +138,7 @@ Material:
     - _attenuation: {r: 1, g: 0.09, b: 0.032, a: 0}
     - _lightColor: {r: 0.7735849, g: 0.7735849, b: 0.7735849, a: 0}
     - _lightDirection: {r: 0, g: -1, b: 0, a: 0}
-    - _lightPosition: {r: 0.47, g: 5.95, b: 0.57, a: 0}
+    - _lightPosition: {r: -1.2, g: 5.95, b: 0.57, a: 0}
     - _tint: {r: 1, g: 1, b: 1, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
