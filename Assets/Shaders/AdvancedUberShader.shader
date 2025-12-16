@@ -106,11 +106,17 @@ Shader "Custom/AdvancedUberShader"
             uniform float4 _GlobalSpotParams[MAX_LIGHTS];
             uniform int _ActiveLightCount;
 
-            // Shadow Global Data
-            uniform sampler2D _GlobalShadowMap;
-            uniform float4x4 _GlobalShadowMatrix;
+            // --- NEW SHADOW UNIFORMS ---
+            // Individual Texture Slots
+            uniform sampler2D _GlobalShadowMap0;
+            uniform sampler2D _GlobalShadowMap1;
+            uniform sampler2D _GlobalShadowMap2;
+            uniform sampler2D _GlobalShadowMap3;
+
+            // Arrays for Data
+            uniform float4x4 _GlobalShadowMatrices[MAX_LIGHTS];
+            uniform float _GlobalShadowEnabled[MAX_LIGHTS];
             uniform float _GlobalShadowBias;
-            uniform float _ShadowCasterIndex;
 
             // Material Properties
             sampler2D _MainTex; float4 _MainTex_ST;
@@ -139,7 +145,6 @@ Shader "Custom/AdvancedUberShader"
                 float3 normal : NORMAL;
                 float3 tangent : TANGENT;
                 float3 binormal : BINORMAL;
-                float4 shadowCoord : TEXCOORD4;
             };
 
             v2f vert (appdata v)
@@ -154,35 +159,20 @@ Shader "Custom/AdvancedUberShader"
                 o.tangent = normalize(mul(unity_ObjectToWorld, float4(v.tangent.xyz, 0.0)).xyz);
                 o.binormal = cross(o.normal, o.tangent) * v.tangent.w;
 
-                // Calculate Shadow Coordinate
-                o.shadowCoord = mul(_GlobalShadowMatrix, float4(o.worldPos, 1.0));
-
                 return o;
             }
 
-            // --------------------------------------------------------
-            // PCF SOFT SHADOW FUNCTION
-            // --------------------------------------------------------
-            // Updated to accept Normal and Light Direction for "Slope-Scaled Bias"
-            float CalculateShadow(float4 shadowCoord, float3 normal, float3 lightDir)
+            // Now accepts 'shadowMap' as an argument!
+            float CalculateShadow(float4 shadowCoord, float3 normal, float3 lightDir, sampler2D shadowMap)
             {
-                // Perspective divide
                 float3 projCoords = shadowCoord.xyz / shadowCoord.w;
 
                 if (projCoords.x < 0 || projCoords.x > 1 || projCoords.y < 0 || projCoords.y > 1)
                     return 1.0;
 
-                // --- SLOPE-SCALED BIAS CALCULATION ---
-                // Calculate how steep the angle is (1.0 = facing light, 0.0 = perpendicular)
                 float cosTheta = clamp(dot(normal, lightDir), 0.0, 1.0);
-                
-                // "Smart" Bias: 
-                // Flat surfaces get low bias (0.0005) to prevent Peter Panning (leaking).
-                // Steep slopes get higher bias (up to 0.005) to prevent Acne.
-                float bias = max(0.005 * (1.0 - cosTheta), 0.0005); 
-                // Note: You can tweak these two numbers (0.005 and 0.0005) to fit your scene scale.
+                float bias = max(0.005 * (1.0 - cosTheta), 0.0005);
 
-                // PCF Loop
                 float shadow = 0.0;
                 float2 texelSize = float2(1.0/2048.0, 1.0/2048.0);
 
@@ -190,9 +180,9 @@ Shader "Custom/AdvancedUberShader"
                 {
                     for(int y = -1; y <= 1; ++y)
                     {
-                        float pcfDepth = tex2D(_GlobalShadowMap, projCoords.xy + float2(x, y) * texelSize).r;
+                        // Sample the passed-in 'shadowMap'
+                        float pcfDepth = tex2D(shadowMap, projCoords.xy + float2(x, y) * texelSize).r;
                         
-                        // Use the calculated 'bias' variable here instead of _GlobalShadowBias
                         #if defined(UNITY_REVERSED_Z)
                             if(projCoords.z < pcfDepth - bias) shadow += 0.0;
                             else shadow += 1.0;
@@ -263,15 +253,23 @@ Shader "Custom/AdvancedUberShader"
                         }
                     }
 
-                    // Shadow Calculation (Only for the designated shadow caster)
                     float shadowVal = 1.0;
-                    if(k == (int)_ShadowCasterIndex)
+                    
+                    // Check if this specific light (k) has shadows enabled
+                    if(_GlobalShadowEnabled[k] > 0.5)
                     {
-                        // Pass the Geometry Normal (i.normal) and Light Direction (L)
-                        shadowVal = CalculateShadow(i.shadowCoord, normalize(i.normal), L);
+                        // Calculate coordinate using THIS light's specific matrix
+                        float4 shadowCoord = mul(_GlobalShadowMatrices[k], float4(i.worldPos, 1.0));
+                        
+                        // Manually pick the texture based on index 'k'
+                        if(k == 0)      shadowVal = CalculateShadow(shadowCoord, N, L, _GlobalShadowMap0);
+                        else if(k == 1) shadowVal = CalculateShadow(shadowCoord, N, L, _GlobalShadowMap1);
+                        else if(k == 2) shadowVal = CalculateShadow(shadowCoord, N, L, _GlobalShadowMap2);
+                        else if(k == 3) shadowVal = CalculateShadow(shadowCoord, N, L, _GlobalShadowMap3);
                     }
+                    // ------------------------
 
-                    // Diffuse (Lambert)
+                    // Diffuse
                     float NdotL = max(dot(N, L), 0.0);
                     finalDiffuse += albedo.rgb * lightColor * NdotL * attenuation * shadowVal;
 

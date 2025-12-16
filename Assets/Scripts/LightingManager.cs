@@ -10,31 +10,21 @@ public class LightingManager : MonoBehaviour
 
     void Update()
     {
-        // Find all active custom lights
         lights.Clear();
         CustomLight[] foundLights = FindObjectsByType<CustomLight>(FindObjectsSortMode.None);
+        // Filter active lights only
+        foreach (var l in foundLights) { if (l.isActiveAndEnabled) lights.Add(l); }
 
-        // --- FIX START ---
-        // Filter out lights that are disabled!
-        foreach (var light in foundLights)
-        {
-            if (light.isActiveAndEnabled)
-            {
-                lights.Add(light);
-            }
-        }
-
-        // Prepare arrays for Shader
+        // Shader Arrays
         Vector4[] lightPos = new Vector4[MAX_LIGHTS];
         Vector4[] lightDir = new Vector4[MAX_LIGHTS];
-        Vector4[] lightCol = new Vector4[MAX_LIGHTS]; // rgb = color * intensity, a = type
-        Vector4[] lightAtten = new Vector4[MAX_LIGHTS]; // xyz = atten, w = spotParams (packed)
-        Vector4[] spotParams = new Vector4[MAX_LIGHTS]; // x = cos(outer), y = cos(inner)
+        Vector4[] lightCol = new Vector4[MAX_LIGHTS];
+        Vector4[] lightAtten = new Vector4[MAX_LIGHTS];
+        Vector4[] spotParams = new Vector4[MAX_LIGHTS];
 
-        // Shadow Data (Support for 1 main shadow caster for this example, or array for multiple)
-        Matrix4x4 mainShadowMatrix = Matrix4x4.identity;
-        Texture mainShadowMap = Texture2D.whiteTexture;
-        int shadowCasterIndex = -1;
+        // --- NEW: Shadow Arrays ---
+        Matrix4x4[] shadowMatrices = new Matrix4x4[MAX_LIGHTS];
+        float[] shadowEnabled = new float[MAX_LIGHTS]; // 1.0 = Casts Shadow, 0.0 = No Shadow
 
         for (int i = 0; i < MAX_LIGHTS; i++)
         {
@@ -43,33 +33,40 @@ public class LightingManager : MonoBehaviour
                 CustomLight l = lights[i];
                 lightPos[i] = l.transform.position;
                 lightDir[i] = l.GetDirection();
-
-                // Pack Type into Alpha of Color
                 lightCol[i] = new Vector4(l.color.r * l.intensity, l.color.g * l.intensity, l.color.b * l.intensity, (float)l.type);
-
                 lightAtten[i] = new Vector4(l.attenuation.x, l.attenuation.y, l.attenuation.z, 0);
 
-                // Pre-calculate Cosines for Spotlights to save Shader instructions
                 float outerRad = l.spotAngle * Mathf.Deg2Rad;
                 float innerRad = l.spotInnerAngle * Mathf.Deg2Rad;
                 spotParams[i] = new Vector4(Mathf.Cos(outerRad), Mathf.Cos(innerRad), 0, 0);
 
-                // Check for Shadows
+                // --- NEW SHADOW LOGIC ---
+                // Send specific data for THIS light index
                 if (l.castShadows && l.shadowMap != null)
                 {
-                    shadowCasterIndex = i;
-                    mainShadowMap = l.shadowMap;
-                    mainShadowMatrix = l.viewProjMatrix;
+                    shadowMatrices[i] = l.viewProjMatrix;
+                    shadowEnabled[i] = 1.0f; // True
+
+                    // Bind the Texture to a unique slot for this index (e.g. "_ShadowMap0", "_ShadowMap1")
+                    Shader.SetGlobalTexture("_GlobalShadowMap" + i, l.shadowMap);
+                }
+                else
+                {
+                    shadowMatrices[i] = Matrix4x4.identity;
+                    shadowEnabled[i] = 0.0f; // False
+                    // Bind a default white texture so shader doesn't crash
+                    Shader.SetGlobalTexture("_GlobalShadowMap" + i, Texture2D.whiteTexture);
                 }
             }
             else
             {
-                // Reset unused slots
+                // Clear empty slots
                 lightCol[i] = Vector4.zero;
+                shadowEnabled[i] = 0.0f;
             }
         }
 
-        // Send to ALL shaders
+        // Send Light Data
         Shader.SetGlobalVectorArray("_GlobalLightPos", lightPos);
         Shader.SetGlobalVectorArray("_GlobalLightDir", lightDir);
         Shader.SetGlobalVectorArray("_GlobalLightCol", lightCol);
@@ -77,9 +74,11 @@ public class LightingManager : MonoBehaviour
         Shader.SetGlobalVectorArray("_GlobalSpotParams", spotParams);
         Shader.SetGlobalInt("_ActiveLightCount", lights.Count);
 
-        // Shadow Global Data
-        Shader.SetGlobalTexture("_GlobalShadowMap", mainShadowMap);
-        Shader.SetGlobalMatrix("_GlobalShadowMatrix", mainShadowMatrix);
-        Shader.SetGlobalFloat("_ShadowCasterIndex", (float)shadowCasterIndex);
+        // --- Send Shadow Data ---
+        // We can send matrices as an array!
+        Shader.SetGlobalMatrixArray("_GlobalShadowMatrices", shadowMatrices);
+        Shader.SetGlobalFloatArray("_GlobalShadowEnabled", shadowEnabled);
+
+        // Note: We ALREADY sent the Textures inside the loop above!
     }
 }
