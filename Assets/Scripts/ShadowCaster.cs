@@ -57,7 +57,7 @@ public class ShadowCaster : MonoBehaviour
         else
         {
             shadowCam.orthographic = false;
-            shadowCam.fieldOfView = customLight.spotAngle;
+            shadowCam.fieldOfView = customLight.spotAngle + 30.0f;
             shadowCam.nearClipPlane = nearPlane;
             shadowCam.farClipPlane = farPlane;
         }
