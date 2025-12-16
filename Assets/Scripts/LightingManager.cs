@@ -40,45 +40,57 @@ public class LightingManager : MonoBehaviour
                 float innerRad = l.spotInnerAngle * Mathf.Deg2Rad;
                 spotParams[i] = new Vector4(Mathf.Cos(outerRad), Mathf.Cos(innerRad), 0, 0);
 
-                // --- NEW SHADOW LOGIC ---
-                // Send specific data for THIS light index
                 if (l.castShadows && l.shadowMap != null)
                 {
                     shadowMatrices[i] = l.viewProjMatrix;
-                    shadowEnabled[i] = 1.0f; // True
+                    shadowEnabled[i] = 1.0f;
 
-                    // Bind the Texture to a unique slot for this index (e.g. "_ShadowMap0", "_ShadowMap1")
-                    Shader.SetGlobalTexture("_GlobalShadowMap" + i, l.shadowMap);
+                    // CHECK THE TYPE: Is it a Point Light?
+                    if (l.type == CustomLight.LightType.Point)
+                    {
+                        // Assign to the CUBE slot
+                        // Note: Ensure l.shadowMap is actually a Cubemap dimension RenderTexture!
+                        Shader.SetGlobalTexture("_GlobalShadowMapCube" + i, l.shadowMap);
+
+                        // Safety: Bind a dummy 2D texture to the other slot just in case
+                        Shader.SetGlobalTexture("_GlobalShadowMap" + i, Texture2D.whiteTexture);
+                    }
+                    else
+                    {
+                        // Assign to the 2D slot (Spot / Directional)
+                        Shader.SetGlobalTexture("_GlobalShadowMap" + i, l.shadowMap);
+
+                        // Safety: Bind a dummy Cube to the other slot
+                        // (Unity doesn't have a default whiteCube, but usually null is safe or you can make a dummy one)
+                    }
                 }
                 else
                 {
                     shadowMatrices[i] = Matrix4x4.identity;
-                    shadowEnabled[i] = 0.0f; // False
-                    // Bind a default white texture so shader doesn't crash
+                    shadowEnabled[i] = 0.0f;
+
+                    // Bind defaults to BOTH slots to prevent reading garbage memory
                     Shader.SetGlobalTexture("_GlobalShadowMap" + i, Texture2D.whiteTexture);
+                    // For Cubemaps, we can't easily pass "Texture2D.whiteTexture", 
+                    // passing null usually clears it or leaves it as black (no shadow).
+                    Shader.SetGlobalTexture("_GlobalShadowMapCube" + i, Texture2D.blackTexture);
                 }
             }
-            else
-            {
-                // Clear empty slots
-                lightCol[i] = Vector4.zero;
-                shadowEnabled[i] = 0.0f;
-            }
+
+            // Send Light Data
+            Shader.SetGlobalVectorArray("_GlobalLightPos", lightPos);
+            Shader.SetGlobalVectorArray("_GlobalLightDir", lightDir);
+            Shader.SetGlobalVectorArray("_GlobalLightCol", lightCol);
+            Shader.SetGlobalVectorArray("_GlobalLightAtten", lightAtten);
+            Shader.SetGlobalVectorArray("_GlobalSpotParams", spotParams);
+            Shader.SetGlobalInt("_ActiveLightCount", lights.Count);
+
+            // --- Send Shadow Data ---
+            // We can send matrices as an array!
+            Shader.SetGlobalMatrixArray("_GlobalShadowMatrices", shadowMatrices);
+            Shader.SetGlobalFloatArray("_GlobalShadowEnabled", shadowEnabled);
+
+            // Note: We ALREADY sent the Textures inside the loop above!
         }
-
-        // Send Light Data
-        Shader.SetGlobalVectorArray("_GlobalLightPos", lightPos);
-        Shader.SetGlobalVectorArray("_GlobalLightDir", lightDir);
-        Shader.SetGlobalVectorArray("_GlobalLightCol", lightCol);
-        Shader.SetGlobalVectorArray("_GlobalLightAtten", lightAtten);
-        Shader.SetGlobalVectorArray("_GlobalSpotParams", spotParams);
-        Shader.SetGlobalInt("_ActiveLightCount", lights.Count);
-
-        // --- Send Shadow Data ---
-        // We can send matrices as an array!
-        Shader.SetGlobalMatrixArray("_GlobalShadowMatrices", shadowMatrices);
-        Shader.SetGlobalFloatArray("_GlobalShadowEnabled", shadowEnabled);
-
-        // Note: We ALREADY sent the Textures inside the loop above!
     }
 }

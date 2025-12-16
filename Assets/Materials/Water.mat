@@ -32,6 +32,10 @@ Material:
         m_Texture: {fileID: 2800000, guid: 653ead8c645521a4db983c023c162f51, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _CubeMap:
+        m_Texture: {fileID: 8900000, guid: 8b051dcc0c5c17347ad92ea59438b35f, type: 2}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _DetailAlbedoMap:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -105,6 +109,7 @@ Material:
     - _Parallax: 0.005
     - _QueueOffset: 0
     - _ReceiveShadows: 1
+    - _Reflectivity: 0.47
     - _Smoothness: 0.5
     - _SmoothnessTextureChannel: 0
     - _Specular: 10
