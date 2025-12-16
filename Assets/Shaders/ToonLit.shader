@@ -110,9 +110,6 @@ Shader "Custom/ToonLit"
                 totalLight += albedo.rgb * lightColor * intensity * attenuation;
             }
 
-            // Add a little ambient so it's not pitch black in shadows
-            totalLight += albedo.rgb * 0.1; 
-
             return float4(totalLight, 1.0);
             }
             ENDHLSL

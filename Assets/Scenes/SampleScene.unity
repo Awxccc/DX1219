@@ -574,6 +574,7 @@ GameObject:
   m_Component:
   - component: {fileID: 258034075}
   - component: {fileID: 258034074}
+  - component: {fileID: 258034076}
   m_Layer: 0
   m_Name: PointLight (1)
   m_TagString: Untagged
@@ -633,6 +634,23 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &258034076
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 258034073}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4598c0251767c934bb9e353315f02461, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ShadowCaster
+  resolution: 2048
+  orthoSize: 20
+  nearPlane: 0.1
+  farPlane: 100
+  shadowBias: 0.005
 --- !u!1 &319252337
 GameObject:
   m_ObjectHideFlags: 0
@@ -759,7 +777,6 @@ GameObject:
   - component: {fileID: 330585547}
   - component: {fileID: 330585549}
   - component: {fileID: 330585548}
-  - component: {fileID: 330585550}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -932,21 +949,6 @@ MonoBehaviour:
   m_DefaultActionMap: 
   m_SplitScreenIndex: -1
   m_Camera: {fileID: 0}
---- !u!114 &330585550
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 330585543}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a5beddd12010a444f85f9b65aed89403, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SimplePostProcess
-  postMaterial: {fileID: 2100000, guid: 78fed89a864dd4847adc91155650c395, type: 2}
-  glitchAmount: 0.01
-  speed: 10
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0
@@ -1179,6 +1181,7 @@ GameObject:
   m_Component:
   - component: {fileID: 914801936}
   - component: {fileID: 914801935}
+  - component: {fileID: 914801937}
   m_Layer: 0
   m_Name: PointLight (2)
   m_TagString: Untagged
@@ -1238,6 +1241,23 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &914801937
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 914801934}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4598c0251767c934bb9e353315f02461, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ShadowCaster
+  resolution: 2048
+  orthoSize: 20
+  nearPlane: 0.1
+  farPlane: 100
+  shadowBias: 0.005
 --- !u!1 &942386097
 GameObject:
   m_ObjectHideFlags: 0
@@ -1344,7 +1364,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: -20.17, y: 1.37, z: -7.39}
-  m_LocalScale: {x: 2, y: 2, z: 2}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -1446,6 +1466,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1077522969}
   - component: {fileID: 1077522968}
+  - component: {fileID: 1077522970}
   m_Layer: 0
   m_Name: PointLight
   m_TagString: Untagged
@@ -1505,6 +1526,23 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1077522970
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1077522967}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4598c0251767c934bb9e353315f02461, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ShadowCaster
+  resolution: 2048
+  orthoSize: 20
+  nearPlane: 0.1
+  farPlane: 100
+  shadowBias: 0.005
 --- !u!1 &1151150108
 GameObject:
   m_ObjectHideFlags: 0
@@ -2491,6 +2529,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1963437165}
   - component: {fileID: 1963437164}
+  - component: {fileID: 1963437166}
   m_Layer: 0
   m_Name: Spotlight
   m_TagString: Untagged
@@ -2550,6 +2589,23 @@ Transform:
   m_Children: []
   m_Father: {fileID: 330585546}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1963437166
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1963437163}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4598c0251767c934bb9e353315f02461, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ShadowCaster
+  resolution: 2048
+  orthoSize: 20
+  nearPlane: 0.1
+  farPlane: 100
+  shadowBias: 0.005
 --- !u!1 &1988025783
 GameObject:
   m_ObjectHideFlags: 0

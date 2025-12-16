@@ -102,12 +102,15 @@ Shader "Custom/GlitchSurface3D"
                     col = lerp(col, _GlitchColor.rgb, 0.5);
                 }
 
+                // --- REPLACEMENT LIGHTING LOGIC ---
                 float3 totalLight = float3(0,0,0);
                 
-                // Make sure to add 'uniform int _ActiveLightCount;' at the top of the HLSLPROGRAM if missing!
                 for(int k = 0; k < MAX_LIGHTS; k++)
                 {
-                    // Skip inactive lights (black color or active count check)
+                    // Stop if we exceed active lights
+                    if(k >= _ActiveLightCount) break; 
+                    
+                    // Skip if light is black/off
                     if(length(_GlobalLightCol[k].rgb) <= 0.0) continue;
 
                     float3 lightColor = _GlobalLightCol[k].rgb;
@@ -122,29 +125,38 @@ Shader "Custom/GlitchSurface3D"
                     }
                     else // Point or Spot
                     {
-                        if(type == 2) // Spot
-                        {
-                            float theta = dot(L, normalize(-_GlobalLightDir[k].xyz));
-                            float outer = _GlobalSpotParams[k].x; // Needs uniform float4 _GlobalSpotParams[MAX_LIGHTS];
-                            float inner = _GlobalSpotParams[k].y;
-                            float epsilon = inner - outer;
-                            float intensity = clamp((theta - outer) / epsilon, 0.0, 1.0);
-                            attenuation *= intensity;
-                        }
-                        // Calculate vector from Light to Pixel
                         float3 distVec = _GlobalLightPos[k].xyz - i.worldPos;
                         float dist = length(distVec);
                         L = normalize(distVec);
                         
-                        // Simple Attenuation (1 / distance^2)
-                        // You can tweak these values (1.0, 0.09, 0.032) to match your light script
-                        attenuation = 1.0 / (1.0 + 0.09 * dist + 0.032 * dist * dist);
+                        // Attenuation (Distance Falloff)
+                        // Uses your C# Attenuation values (Constant, Linear, Quadratic)
+                        float3 attParams = _GlobalLightAtten[k].xyz; 
+                        // Default to standard values if 0 to prevent divide by zero errors
+                        if(length(attParams) == 0) attParams = float3(1, 0.09, 0.032); 
+                        
+                        attenuation = 1.0 / (attParams.x + attParams.y * dist + attParams.z * dist * dist);
+
+                        // --- SPOTLIGHT CONE LOGIC ---
+                        if(type == 2) 
+                        {
+                            // Calculate angle between Light Direction and Vector to Pixel
+                            float theta = dot(L, normalize(-_GlobalLightDir[k].xyz));
+                            
+                            // Get Outer/Inner Cosines from C#
+                            float outer = _GlobalSpotParams[k].x;
+                            float inner = _GlobalSpotParams[k].y;
+                            
+                            // Smoothly fade the edges
+                            float epsilon = inner - outer;
+                            float intensity = clamp((theta - outer) / epsilon, 0.0, 1.0);
+                            
+                            attenuation *= intensity;
+                        }
                     }
 
-                    // Diffuse Calculation
+                    // Calculate Diffuse (Lambert)
                     float diff = max(dot(i.normal, L), 0.0);
-                    
-                    // Add this light's contribution
                     totalLight += col * diff * lightColor * attenuation;
                 }
                 

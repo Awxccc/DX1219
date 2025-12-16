@@ -25,12 +25,70 @@ Shader "Custom/AdvancedUberShader"
         Tags { "RenderType"="Transparent" "Queue"="Transparent" }
         LOD 200
         
-        // Standard Alpha Blending
-        Blend SrcAlpha OneMinusSrcAlpha
-        ZWrite On
-
+        // ========================================================
+        // PASS 1: SHADOW CASTER (Renders depth to shadow map)
+        // ========================================================
         Pass
         {
+            Name "ShadowCaster"
+            Tags { "LightMode" = "ShadowCaster" }
+            
+            ZWrite On
+            ZTest LEqual
+            ColorMask 0  // Don't write color, only depth
+            
+            HLSLPROGRAM
+            #pragma vertex vert_shadow
+            #pragma fragment frag_shadow
+            #include "UnityCG.cginc"
+            
+            sampler2D _MainTex;
+            float4 _MainTex_ST;
+            float4 _Tint;
+            float _AlphaCutoff;
+            
+            struct appdata_shadow
+            {
+                float4 vertex : POSITION;
+                float2 uv : TEXCOORD0;
+            };
+            
+            struct v2f_shadow
+            {
+                float4 pos : SV_POSITION;
+                float2 uv : TEXCOORD0;
+            };
+            
+            v2f_shadow vert_shadow(appdata_shadow v)
+            {
+                v2f_shadow o;
+                o.pos = UnityObjectToClipPos(v.vertex);
+                o.uv = TRANSFORM_TEX(v.uv, _MainTex);
+                return o;
+            }
+            
+            float4 frag_shadow(v2f_shadow i) : SV_Target
+            {
+                // Handle alpha cutoff for transparent objects
+                float4 albedo = tex2D(_MainTex, i.uv) * _Tint;
+                if(albedo.a < _AlphaCutoff) discard;
+                
+                // Depth is written automatically, we just need to not discard
+                return float4(0, 0, 0, 1);
+            }
+            ENDHLSL
+        }
+        
+        // ========================================================
+        // PASS 2: MAIN RENDERING (Your original pass)
+        // ========================================================
+        Pass
+        {
+            Name "ForwardBase"
+            
+            Blend SrcAlpha OneMinusSrcAlpha
+            ZWrite On
+
             HLSLPROGRAM
             #include "UnityCG.cginc"
             #pragma vertex vert
@@ -105,30 +163,45 @@ Shader "Custom/AdvancedUberShader"
             // --------------------------------------------------------
             // PCF SOFT SHADOW FUNCTION
             // --------------------------------------------------------
-            float CalculateShadow(float4 shadowCoord)
+            // Updated to accept Normal and Light Direction for "Slope-Scaled Bias"
+            float CalculateShadow(float4 shadowCoord, float3 normal, float3 lightDir)
             {
                 // Perspective divide
                 float3 projCoords = shadowCoord.xyz / shadowCoord.w;
-                
-                // If outside shadow map range, no shadow
+
                 if (projCoords.x < 0 || projCoords.x > 1 || projCoords.y < 0 || projCoords.y > 1)
                     return 1.0;
 
-                // PCF Loop (3x3 Sample)
-                float shadow = 0.0;
-                // Texel size estimation (1/2048)
-                float2 texelSize = float2(1.0/2048.0, 1.0/2048.0);
+                // --- SLOPE-SCALED BIAS CALCULATION ---
+                // Calculate how steep the angle is (1.0 = facing light, 0.0 = perpendicular)
+                float cosTheta = clamp(dot(normal, lightDir), 0.0, 1.0);
                 
+                // "Smart" Bias: 
+                // Flat surfaces get low bias (0.0005) to prevent Peter Panning (leaking).
+                // Steep slopes get higher bias (up to 0.005) to prevent Acne.
+                float bias = max(0.005 * (1.0 - cosTheta), 0.0005); 
+                // Note: You can tweak these two numbers (0.005 and 0.0005) to fit your scene scale.
+
+                // PCF Loop
+                float shadow = 0.0;
+                float2 texelSize = float2(1.0/2048.0, 1.0/2048.0);
+
                 for(int x = -1; x <= 1; ++x)
                 {
                     for(int y = -1; y <= 1; ++y)
                     {
-                        float pcfDepth = tex2D(_GlobalShadowMap, projCoords.xy + float2(x, y) * texelSize).r; 
-                        // Compare depth with bias
-                        shadow += (projCoords.z - _GlobalShadowBias > pcfDepth) ? 0.0 : 1.0;        
+                        float pcfDepth = tex2D(_GlobalShadowMap, projCoords.xy + float2(x, y) * texelSize).r;
+                        
+                        // Use the calculated 'bias' variable here instead of _GlobalShadowBias
+                        #if defined(UNITY_REVERSED_Z)
+                            if(projCoords.z < pcfDepth - bias) shadow += 0.0;
+                            else shadow += 1.0;
+                        #else
+                            if(projCoords.z > pcfDepth + bias) shadow += 0.0;
+                            else shadow += 1.0;
+                        #endif
                     }    
                 }
-                
                 return shadow / 9.0;
             }
 
@@ -194,7 +267,8 @@ Shader "Custom/AdvancedUberShader"
                     float shadowVal = 1.0;
                     if(k == (int)_ShadowCasterIndex)
                     {
-                        shadowVal = CalculateShadow(i.shadowCoord);
+                        // Pass the Geometry Normal (i.normal) and Light Direction (L)
+                        shadowVal = CalculateShadow(i.shadowCoord, normalize(i.normal), L);
                     }
 
                     // Diffuse (Lambert)
