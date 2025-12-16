@@ -23,8 +23,12 @@ Shader "Custom/DissolveEffect"
 
             // Global Light Support
             #define MAX_LIGHTS 4
-            uniform float4 _GlobalLightDir[MAX_LIGHTS];
             uniform float4 _GlobalLightCol[MAX_LIGHTS];
+            uniform float4 _GlobalLightDir[MAX_LIGHTS];
+            uniform float4 _GlobalLightPos[MAX_LIGHTS];
+            uniform float4 _GlobalLightAtten[MAX_LIGHTS];
+            uniform float4 _GlobalSpotParams[MAX_LIGHTS];
+            uniform int _ActiveLightCount;
 
             struct appdata
             {
@@ -38,6 +42,7 @@ Shader "Custom/DissolveEffect"
                 float4 pos : SV_POSITION;
                 float2 uv : TEXCOORD0;
                 float3 worldNormal : NORMAL;
+                float3 worldPos_fix : TEXCOORD1; // ADD THIS
             };
 
             sampler2D _MainTex;
@@ -53,6 +58,7 @@ Shader "Custom/DissolveEffect"
                 o.pos = UnityObjectToClipPos(v.vertex);
                 o.uv = v.uv;
                 o.worldNormal = UnityObjectToWorldNormal(v.normal);
+                o.worldPos_fix = mul(unity_ObjectToWorld, v.vertex).xyz; // ADD THIS
                 return o;
             }
 
@@ -60,26 +66,67 @@ Shader "Custom/DissolveEffect"
             {
                 // 1. Read Dissolve Noise
                 float noiseVal = tex2D(_NoiseTex, i.uv).r;
-
-                // 2. Perform Clip
-                // If noise value is less than dissolve amount, discard pixel
                 float val = noiseVal - _DissolveAmount;
                 if(val < 0) discard;
 
                 // 3. Base Color & Lighting
                 float4 col = tex2D(_MainTex, i.uv);
                 
-                // Simple Diffuse from Sun (Light 0)
-                float3 L = normalize(-_GlobalLightDir[0].xyz);
-                float diff = max(dot(i.worldNormal, L), 0.0);
-                float3 lighting = col.rgb * diff * _GlobalLightCol[0].rgb;
+                // 3. Lighting Loop
+                float3 totalLight = float3(0,0,0);
+                
+                for(int k = 0; k < MAX_LIGHTS; k++)
+                {
+                    if(k >= _ActiveLightCount) break;
+                    if(length(_GlobalLightCol[k].rgb) <= 0.0) continue;
 
-                // 4. Burn Edge Calculation
-                // If 'val' is very close to 0 (just barely survived the clip), it's an edge
-                float edgeFactor = step(val, _EdgeWidth); 
+                    float3 lightColor = _GlobalLightCol[k].rgb;
+                    int type = (int)_GlobalLightCol[k].a; // 0=Dir, 1=Point, 2=Spot
+
+                    float3 L;
+                    float attenuation = 1.0;
+
+                    if(type == 0) // Directional
+                    {
+                        L = normalize(-_GlobalLightDir[k].xyz);
+                    }
+                    else // Point or Spot
+                    {
+                        float3 distVec = _GlobalLightPos[k].xyz - i.pos.xyz; // Note: Dissolve shader didn't pass worldPos clearly, usually needs v.vertex -> world
+                        // Correction: Dissolve shader 'v2f' struct lacks explicit worldPos in frag, 
+                        // but 'i.pos' is Clip Space. We need World Pos for Point lights.
+                        // *Important*: You might need to add 'float3 worldPos : TEXCOORD1;' to v2f struct if not present!
+                        // Assuming you add it (see below), or use i.worldNormal temporarily which is wrong for position.
+                        
+                        // LET'S FIX THE STRUCT FIRST (See instruction below code block)
+                        // For now, assuming you added worldPos:
+                        distVec = _GlobalLightPos[k].xyz - i.worldPos_fix; 
+                        
+                        float dist = length(distVec);
+                        L = normalize(distVec);
+                        float3 att = _GlobalLightAtten[k].xyz;
+                        attenuation = 1.0 / (att.x + att.y * dist + att.z * dist * dist);
+
+                        if(type == 2) // Spot Cone Logic
+                        {
+                            float theta = dot(L, normalize(-_GlobalLightDir[k].xyz));
+                            float outer = _GlobalSpotParams[k].x;
+                            float inner = _GlobalSpotParams[k].y;
+                            float epsilon = inner - outer;
+                            float intensity = clamp((theta - outer) / epsilon, 0.0, 1.0);
+                            attenuation *= intensity;
+                        }
+                    }
+
+                    float diff = max(dot(i.worldNormal, L), 0.0);
+                    totalLight += col.rgb * diff * lightColor * attenuation;
+                }
+
+                // 4. Burn Edge
+                float edgeFactor = step(val, _EdgeWidth);
                 float3 emission = edgeFactor * _EdgeColor.rgb * _EdgeIntensity;
 
-                return float4(lighting + emission, 1.0);
+                return float4(totalLight + emission, 1.0);
             }
             ENDHLSL
         }

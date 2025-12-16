@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
-
-[ExecuteAlways]
+[ExecuteInEditMode]
 public class LightingManager : MonoBehaviour
 {
     // Maximum lights supported in Shader
@@ -14,7 +13,16 @@ public class LightingManager : MonoBehaviour
         // Find all active custom lights
         lights.Clear();
         CustomLight[] foundLights = FindObjectsByType<CustomLight>(FindObjectsSortMode.None);
-        lights.AddRange(foundLights);
+
+        // --- FIX START ---
+        // Filter out lights that are disabled!
+        foreach (var light in foundLights)
+        {
+            if (light.isActiveAndEnabled)
+            {
+                lights.Add(light);
+            }
+        }
 
         // Prepare arrays for Shader
         Vector4[] lightPos = new Vector4[MAX_LIGHTS];

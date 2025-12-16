@@ -60,9 +60,14 @@ Shader "Custom/CrystalGlass"
                 float3 viewDir = normalize(_WorldSpaceCameraPos - i.worldPos);
                 float3 H = normalize(lightDir + viewDir);
                 float spec = pow(max(dot(i.normal, H), 0.0), _Smoothness * 100);
-                
+
+                float NdotV = 1.0 - saturate(dot(i.normal, viewDir));
+                float rim = pow(NdotV, 3.0); // 3.0 is the "rim power"
+
                 float3 finalCol = lerp(bg, _Color.rgb, _Color.a); // Tint
                 finalCol += spec * _GlobalLightCol[0].rgb; // Add Shine
+
+                finalCol += _Color.rgb * rim * 0.5;
 
                 return float4(finalCol, 1.0);
             }

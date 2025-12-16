@@ -69,30 +69,60 @@ Shader "Custom/AdvancedWater"
 
             float4 frag (v2f i) : SV_Target
             {
-                // SCROLLING NORMAL MAPS
+                // SCROLLING NORMAL MAPS (Keep this part)
                 float2 uv1 = i.uv + _Time.y * _WaveSpeed.xy;
                 float2 uv2 = i.uv - _Time.y * _WaveSpeed.yx * 0.5;
                 
                 float3 n1 = UnpackNormal(tex2D(_BumpMap, uv1));
                 float3 n2 = UnpackNormal(tex2D(_BumpMap, uv2));
                 float3 combinedNormal = normalize(n1 + n2);
-
-                // Reorient normal to world space (Approximate for flat water)
                 float3 worldNormal = normalize(float3(combinedNormal.x, 1.0, combinedNormal.y));
 
-                // LIGHTING (Sun only - Index 0)
-                float3 lightDir = normalize(-_GlobalLightDir[0].xyz);
+                // --- NEW LIGHTING LOOP ---
                 float3 viewDir = normalize(_WorldSpaceCameraPos - i.worldPos);
-                float3 H = normalize(lightDir + viewDir);
+                float3 totalDiffuse = float3(0,0,0);
+                float3 totalSpecular = float3(0,0,0);
 
-                // Diffuse
-                float diff = max(dot(worldNormal, lightDir), 0.0);
+                // Use the active light count uniform
+                // (Make sure to add 'uniform int _ActiveLightCount;' at the top if missing!)
                 
-                // Specular
-                float spec = pow(max(dot(worldNormal, H), 0.0), _Specular);
-                
-                float3 finalColor = _WaterColor.rgb * diff + float3(1,1,1) * spec;
+                for(int k = 0; k < MAX_LIGHTS; k++)
+                {
+                    // Check if light is active (simple check based on your logic)
+                    if(length(_GlobalLightCol[k].rgb) <= 0.0) continue; 
 
+                    float3 lightColor = _GlobalLightCol[k].rgb;
+                    int type = (int)_GlobalLightCol[k].a; // 0=Dir, 1=Point, 2=Spot
+
+                    // Calculate Light Direction & Attenuation
+                    float3 L;
+                    float attenuation = 1.0;
+
+                    if(type == 0) // Directional
+                    {
+                        L = normalize(-_GlobalLightDir[k].xyz);
+                    }
+                    else // Point or Spot
+                    {
+                        float3 distVec = _GlobalLightPos[k].xyz - i.worldPos;
+                        float dist = length(distVec);
+                        L = normalize(distVec);
+                        // Simple attenuation matching your other shaders
+                        // (Or just use 1.0/dist*dist for water simplicity)
+                        attenuation = 1.0 / (1.0 + 0.1 * dist + 0.05 * dist * dist); 
+                    }
+
+                    // Diffuse
+                    float diff = max(dot(worldNormal, L), 0.0);
+                    totalDiffuse += _WaterColor.rgb * diff * lightColor * attenuation;
+
+                    // Specular
+                    float3 H = normalize(L + viewDir);
+                    float spec = pow(max(dot(worldNormal, H), 0.0), _Specular);
+                    totalSpecular += float3(1,1,1) * spec * lightColor * attenuation;
+                }
+
+                float3 finalColor = totalDiffuse + totalSpecular;
                 return float4(finalColor, _WaterColor.a);
             }
             ENDHLSL
