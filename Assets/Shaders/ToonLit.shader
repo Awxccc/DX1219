@@ -3,27 +3,33 @@ Shader "Custom/ToonLit"
     Properties
     {
         _MainTex ("Texture", 2D) = "white" {}
+
         _Color ("Color", Color) = (1,1,1,1)
+
         _RampThreshold ("Ramp Threshold", Range(0,1)) = 0.5
+
         _RampSmoothness ("Ramp Smoothness", Range(0,0.1)) = 0.01
     }
+
     SubShader
     {
+        // Render as opaque geometry in the main geometry queue
         Tags { "RenderType"="Opaque" "Queue"="Geometry" }
         LOD 100
 
         Pass
         {
+            // Forward rendering pass compatible with URP
             Name "ForwardLit"
-            Tags { "LightMode" = "UniversalForward" } // Important for URP
+            Tags { "LightMode" = "UniversalForward" }
 
             HLSLPROGRAM
+
             #include "UnityCG.cginc"
             #pragma vertex vert
             #pragma fragment frag
-
-            // Use our Global Lighting System
             #define MAX_LIGHTS 4
+
             uniform float4 _GlobalLightCol[MAX_LIGHTS];
             uniform float4 _GlobalLightDir[MAX_LIGHTS];
             uniform float4 _GlobalLightPos[MAX_LIGHTS];
@@ -34,84 +40,126 @@ Shader "Custom/ToonLit"
             struct appdata
             {
                 float4 vertex : POSITION;
+
                 float3 normal : NORMAL;
+
                 float2 uv : TEXCOORD0;
             };
 
             struct v2f
-{
-    float4 pos : SV_POSITION;
-    float3 normal : NORMAL;
-    float2 uv : TEXCOORD0;
-    float3 worldPos : TEXCOORD1; // Add this
-};
+            {
+                // Clip-space position for rasterization
+                float4 pos : SV_POSITION;
 
-            sampler2D _MainTex; float4 _MainTex_ST;
+                // World-space normal used for lighting
+                float3 normal : NORMAL;
+
+                // Transformed texture coordinates
+                float2 uv : TEXCOORD0;
+
+                // World-space position used for point and spot lights
+                float3 worldPos : TEXCOORD1;
+            };
+
+            sampler2D _MainTex;
+            float4 _MainTex_ST;
             float4 _Color;
             float _RampThreshold;
             float _RampSmoothness;
 
             v2f vert (appdata v)
-{
-    v2f o;
-    o.pos = UnityObjectToClipPos(v.vertex);
-    o.normal = UnityObjectToWorldNormal(v.normal);
-    o.uv = TRANSFORM_TEX(v.uv, _MainTex);
-    o.worldPos = mul(unity_ObjectToWorld, v.vertex).xyz; // Add this
-    return o;
-}
+            {
+                v2f o;
+
+                // Transform vertex position to clip space
+                o.pos = UnityObjectToClipPos(v.vertex);
+
+                // Convert normal from object space to world space
+                o.normal = UnityObjectToWorldNormal(v.normal);
+
+                // Apply texture tiling and offset
+                o.uv = TRANSFORM_TEX(v.uv, _MainTex);
+
+                // Compute world-space position for lighting calculations
+                o.worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
+
+                return o;
+            }
 
             float4 frag (v2f i) : SV_Target
-        {
-            float3 normal = normalize(i.normal);
-            float3 totalLight = float3(0,0,0);
-            float4 albedo = tex2D(_MainTex, i.uv) * _Color;
-
-            for(int k = 0; k < MAX_LIGHTS; k++)
             {
-                if(k >= _ActiveLightCount) break;
-                if(length(_GlobalLightCol[k].rgb) <= 0.0) continue;
+                // Normalize interpolated surface normal
+                float3 normal = normalize(i.normal);
 
-                float3 lightColor = _GlobalLightCol[k].rgb;
-                int type = (int)_GlobalLightCol[k].a;
+                // Accumulates lighting contribution from all lights
+                float3 totalLight = float3(0, 0, 0);
 
-                float3 L;
-                float attenuation = 1.0;
+                // Sample base color and apply tint
+                float4 albedo = tex2D(_MainTex, i.uv) * _Color;
 
-                if(type == 0) // Dir
+                // Loop through all active custom lights
+                for (int k = 0; k < MAX_LIGHTS; k++)
                 {
-                    L = normalize(-_GlobalLightDir[k].xyz);
-                }
-                else // Point/Spot
-                {
-                    float3 distVec = _GlobalLightPos[k].xyz - i.worldPos;
-                    float dist = length(distVec);
-                    L = normalize(distVec);
+                    if (k >= _ActiveLightCount)
+                        break;
 
-                    // Attenuation
-                    float3 att = _GlobalLightAtten[k].xyz;
-                    attenuation = 1.0 / (att.x + att.y * dist + att.z * dist * dist);
+                    // Skip lights with zero contribution
+                    if (length(_GlobalLightCol[k].rgb) <= 0.0)
+                        continue;
 
-                    if(type == 2) // Spot
+                    float3 lightColor = _GlobalLightCol[k].rgb;
+
+                    // Light type is encoded in the alpha channel
+                    int type = (int)_GlobalLightCol[k].a;
+
+                    float3 L;
+                    float attenuation = 1.0;
+
+                    // Directional light uses a constant direction
+                    if (type == 0)
                     {
-                        float theta = dot(L, normalize(-_GlobalLightDir[k].xyz));
-                        float outer = _GlobalSpotParams[k].x;
-                        float inner = _GlobalSpotParams[k].y;
-                        float epsilon = inner - outer;
-                        float intensity = clamp((theta - outer) / epsilon, 0.0, 1.0);
-                        attenuation *= intensity;
+                        L = normalize(-_GlobalLightDir[k].xyz);
                     }
+                    // Point and spot lights depend on distance and position
+                    else
+                    {
+                        float3 distVec = _GlobalLightPos[k].xyz - i.worldPos;
+                        float dist = length(distVec);
+                        L = normalize(distVec);
+
+                        // Distance attenuation using constant, linear, and quadratic terms
+                        float3 att = _GlobalLightAtten[k].xyz;
+                        attenuation = 1.0 / (att.x + att.y * dist + att.z * dist * dist);
+
+                        // Additional angular attenuation for spot lights
+                        if (type == 2)
+                        {
+                            float theta = dot(L, normalize(-_GlobalLightDir[k].xyz));
+                            float outer = _GlobalSpotParams[k].x;
+                            float inner = _GlobalSpotParams[k].y;
+                            float epsilon = inner - outer;
+
+                            float spotIntensity = clamp((theta - outer) / epsilon, 0.0, 1.0);
+                            attenuation *= spotIntensity;
+                        }
+                    }
+
+                    // Toon shading: convert smooth lighting into hard bands
+                    float NdotL = dot(normal, L);
+                    float intensity = smoothstep(
+                        _RampThreshold - _RampSmoothness,
+                        _RampThreshold + _RampSmoothness,
+                        NdotL
+                    );
+
+                    // Accumulate final lighting contribution
+                    totalLight += albedo.rgb * lightColor * intensity * attenuation;
                 }
 
-                // Cel Shading Math (Per light)
-                float NdotL = dot(normal, L);
-                float intensity = smoothstep(_RampThreshold - _RampSmoothness, _RampThreshold + _RampSmoothness, NdotL);
-
-                totalLight += albedo.rgb * lightColor * intensity * attenuation;
+                // Output final shaded color with full opacity
+                return float4(totalLight, 1.0);
             }
 
-            return float4(totalLight, 1.0);
-            }
             ENDHLSL
         }
     }
