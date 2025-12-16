@@ -1,96 +1,125 @@
 using System.Collections.Generic;
 using UnityEngine;
+
 [ExecuteInEditMode]
 public class LightingManager : MonoBehaviour
 {
-    // Maximum lights supported in Shader
+    // Maximum number of custom lights the shader can process at once
     private const int MAX_LIGHTS = 4;
 
-    private List<CustomLight> lights = new List<CustomLight>();
+    // List used to store all active CustomLight components in the scene
+    private List<CustomLight> lights = new();
 
     void Update()
     {
+        // Clear the list every frame so it can be rebuilt with current active lights
         lights.Clear();
-        CustomLight[] foundLights = FindObjectsByType<CustomLight>(FindObjectsSortMode.None);
-        // Filter active lights only
-        foreach (var l in foundLights) { if (l.isActiveAndEnabled) lights.Add(l); }
 
-        // Shader Arrays
+        // Find all CustomLight components in the scene (both runtime and edit mode)
+        CustomLight[] foundLights = FindObjectsByType<CustomLight>(FindObjectsSortMode.None);
+
+        // Only add lights that are enabled and active in the hierarchy
+        foreach (var l in foundLights)
+        {
+            if (l.isActiveAndEnabled)
+                lights.Add(l);
+        }
+
+        // Arrays used to send lighting data to the shader
         Vector4[] lightPos = new Vector4[MAX_LIGHTS];
         Vector4[] lightDir = new Vector4[MAX_LIGHTS];
         Vector4[] lightCol = new Vector4[MAX_LIGHTS];
         Vector4[] lightAtten = new Vector4[MAX_LIGHTS];
         Vector4[] spotParams = new Vector4[MAX_LIGHTS];
 
-        // --- NEW: Shadow Arrays ---
+        // Arrays used to send shadow data to the shader
         Matrix4x4[] shadowMatrices = new Matrix4x4[MAX_LIGHTS];
-        float[] shadowEnabled = new float[MAX_LIGHTS]; // 1.0 = Casts Shadow, 0.0 = No Shadow
+        float[] shadowEnabled = new float[MAX_LIGHTS];
 
+        // Loop through the maximum supported lights
         for (int i = 0; i < MAX_LIGHTS; i++)
         {
+            // If a valid light exists at this index, populate shader data
             if (i < lights.Count)
             {
                 CustomLight l = lights[i];
-                lightPos[i] = l.transform.position;
-                lightDir[i] = l.GetDirection();
-                lightCol[i] = new Vector4(l.color.r * l.intensity, l.color.g * l.intensity, l.color.b * l.intensity, (float)l.type);
-                lightAtten[i] = new Vector4(l.attenuation.x, l.attenuation.y, l.attenuation.z, 0);
 
+                // World-space position of the light
+                lightPos[i] = l.transform.position;
+
+                // Forward direction of the light (used for directional and spot lights)
+                lightDir[i] = l.GetDirection();
+
+                // RGB color multiplied by intensity, with light type stored in the alpha channel
+                lightCol[i] = new Vector4(
+                    l.color.r * l.intensity,
+                    l.color.g * l.intensity,
+                    l.color.b * l.intensity,
+                    (float)l.type
+                );
+
+                // Attenuation parameters for distance-based falloff
+                lightAtten[i] = new Vector4(
+                    l.attenuation.x,
+                    l.attenuation.y,
+                    l.attenuation.z,
+                    0
+                );
+
+                // Convert spot light angles to cosine values for shader comparisons
                 float outerRad = l.spotAngle * Mathf.Deg2Rad;
                 float innerRad = l.spotInnerAngle * Mathf.Deg2Rad;
-                spotParams[i] = new Vector4(Mathf.Cos(outerRad), Mathf.Cos(innerRad), 0, 0);
+                spotParams[i] = new Vector4(
+                    Mathf.Cos(outerRad),
+                    Mathf.Cos(innerRad),
+                    0,
+                    0
+                );
 
+                // Handle shadow data if the light casts shadows
                 if (l.castShadows && l.shadowMap != null)
                 {
+                    // Store the light's view-projection matrix for shadow mapping
                     shadowMatrices[i] = l.viewProjMatrix;
                     shadowEnabled[i] = 1.0f;
 
-                    // CHECK THE TYPE: Is it a Point Light?
+                    // Point lights use cubemap shadow textures
                     if (l.type == CustomLight.LightType.Point)
                     {
-                        // Assign to the CUBE slot
-                        // Note: Ensure l.shadowMap is actually a Cubemap dimension RenderTexture!
                         Shader.SetGlobalTexture("_GlobalShadowMapCube" + i, l.shadowMap);
-
-                        // Safety: Bind a dummy 2D texture to the other slot just in case
                         Shader.SetGlobalTexture("_GlobalShadowMap" + i, Texture2D.whiteTexture);
                     }
+                    // Spot and directional lights use 2D shadow maps
                     else
                     {
-                        // Assign to the 2D slot (Spot / Directional)
                         Shader.SetGlobalTexture("_GlobalShadowMap" + i, l.shadowMap);
-
-                        // Safety: Bind a dummy Cube to the other slot
-                        // (Unity doesn't have a default whiteCube, but usually null is safe or you can make a dummy one)
                     }
                 }
                 else
                 {
+                    // Disable shadows for this light
                     shadowMatrices[i] = Matrix4x4.identity;
                     shadowEnabled[i] = 0.0f;
 
-                    // Bind defaults to BOTH slots to prevent reading garbage memory
+                    // Bind safe default textures so the shader never samples invalid memory
                     Shader.SetGlobalTexture("_GlobalShadowMap" + i, Texture2D.whiteTexture);
-                    // For Cubemaps, we can't easily pass "Texture2D.whiteTexture", 
-                    // passing null usually clears it or leaves it as black (no shadow).
                     Shader.SetGlobalTexture("_GlobalShadowMapCube" + i, Texture2D.blackTexture);
                 }
             }
-
-            // Send Light Data
-            Shader.SetGlobalVectorArray("_GlobalLightPos", lightPos);
-            Shader.SetGlobalVectorArray("_GlobalLightDir", lightDir);
-            Shader.SetGlobalVectorArray("_GlobalLightCol", lightCol);
-            Shader.SetGlobalVectorArray("_GlobalLightAtten", lightAtten);
-            Shader.SetGlobalVectorArray("_GlobalSpotParams", spotParams);
-            Shader.SetGlobalInt("_ActiveLightCount", lights.Count);
-
-            // --- Send Shadow Data ---
-            // We can send matrices as an array!
-            Shader.SetGlobalMatrixArray("_GlobalShadowMatrices", shadowMatrices);
-            Shader.SetGlobalFloatArray("_GlobalShadowEnabled", shadowEnabled);
-
-            // Note: We ALREADY sent the Textures inside the loop above!
         }
+
+        // Send all lighting arrays to the shader as global parameters
+        Shader.SetGlobalVectorArray("_GlobalLightPos", lightPos);
+        Shader.SetGlobalVectorArray("_GlobalLightDir", lightDir);
+        Shader.SetGlobalVectorArray("_GlobalLightCol", lightCol);
+        Shader.SetGlobalVectorArray("_GlobalLightAtten", lightAtten);
+        Shader.SetGlobalVectorArray("_GlobalSpotParams", spotParams);
+
+        // Tell the shader how many lights are currently active
+        Shader.SetGlobalInt("_ActiveLightCount", lights.Count);
+
+        // Send shadow-related data to the shader
+        Shader.SetGlobalMatrixArray("_GlobalShadowMatrices", shadowMatrices);
+        Shader.SetGlobalFloatArray("_GlobalShadowEnabled", shadowEnabled);
     }
 }

@@ -5,9 +5,9 @@ using UnityEngine.InputSystem;
 public class SceneController : MonoBehaviour
 {
     [Header("Lighting References")]
-    public CustomLight mainLight;       // Your Directional Light
-    public CustomLight[] pointLights;   // Array of Point Lights
-    public CustomLight[] spotLights;    // Array of Spot Lights (NEW)
+    public CustomLight mainLight;
+    public CustomLight[] pointLights;
+    public CustomLight[] spotLights;
 
     [Header("Settings")]
     public float waterSpeedMultiplier = 0.5f;
@@ -21,42 +21,35 @@ public class SceneController : MonoBehaviour
     {
         playerInput = GetComponent<PlayerInput>();
 
-        // 1. Setup Toggle Shadow (Existing)
-        var toggleAction = playerInput.actions["ToggleShadow"];
+        InputAction toggleAction = playerInput.actions["ToggleShadow"];
         if (toggleAction != null)
         {
             toggleAction.performed += ctx => ToggleShadows();
         }
 
-        // 2. Setup Cycle Lights (Existing)
-        var cycleAction = playerInput.actions["CycleLights"];
+        InputAction cycleAction = playerInput.actions["CycleLights"];
         if (cycleAction != null)
         {
             cycleAction.performed += ctx => CycleLightColors();
         }
 
-        // 3. Setup Light Toggles (NEW)
-        // Ensure you add these Action names to your Input System Asset!
-        var toggleDirAction = playerInput.actions["ToggleDirectional"];
+        InputAction toggleDirAction = playerInput.actions["ToggleDirectional"];
         if (toggleDirAction != null)
             toggleDirAction.performed += ctx => ToggleDirectionalLight();
 
-        var togglePointAction = playerInput.actions["TogglePoint"];
+        InputAction togglePointAction = playerInput.actions["TogglePoint"];
         if (togglePointAction != null)
             togglePointAction.performed += ctx => TogglePointLights();
 
-        var toggleSpotAction = playerInput.actions["ToggleSpot"];
+        InputAction toggleSpotAction = playerInput.actions["ToggleSpot"];
         if (toggleSpotAction != null)
             toggleSpotAction.performed += ctx => ToggleSpotLights();
 
-        // 4. Cache Water Control
         waterControlAction = playerInput.actions["WaterControl"];
     }
 
     private void Update()
     {
-
-        // Dissolve Logic
         if (Keyboard.current.tKey.isPressed)
         {
             dissolveValue += Time.deltaTime;
@@ -73,8 +66,6 @@ public class SceneController : MonoBehaviour
         }
     }
 
-    // --- Helper Functions ---
-
     private void ToggleShadows()
     {
         if (mainLight != null)
@@ -90,13 +81,10 @@ public class SceneController : MonoBehaviour
 
         foreach (var pl in pointLights)
         {
-            // Simple Null check in case a light was destroyed
             if (pl != null)
                 pl.color = Color.HSVToRGB(Random.value, 1f, 1f);
         }
     }
-
-    // --- NEW TOGGLE FUNCTIONS ---
 
     private void ToggleDirectionalLight()
     {
@@ -112,12 +100,11 @@ public class SceneController : MonoBehaviour
         if (pointLights != null)
         {
             bool anyOn = false;
-            // Check the state of the first one to sync them (all on or all off)
             if (pointLights.Length > 0 && pointLights[0] != null) anyOn = pointLights[0].enabled;
 
             foreach (var l in pointLights)
             {
-                if (l != null) l.enabled = !anyOn; // Flip state
+                if (l != null) l.enabled = !anyOn;
             }
             Debug.Log($"Point Lights {(!anyOn ? "On" : "Off")}");
         }
@@ -132,7 +119,7 @@ public class SceneController : MonoBehaviour
 
             foreach (var l in spotLights)
             {
-                if (l != null) l.enabled = !anyOn; // Flip state
+                if (l != null) l.enabled = !anyOn;
             }
             Debug.Log($"Spot Lights {(!anyOn ? "On" : "Off")}");
         }

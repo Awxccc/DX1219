@@ -10,7 +10,7 @@ public class CustomLight : MonoBehaviour
 
 
     // Attenuation: x = constant, y = linear, z = quadratic
-    public Vector3 attenuation = new Vector3(1.0f, 0.09f, 0.032f);
+    public Vector3 attenuation = new(1.0f, 0.09f, 0.032f);
 
     [Range(0, 180)] public float spotAngle = 30.0f;
     [Range(0, 180)] public float spotInnerAngle = 25.0f;
@@ -38,8 +38,10 @@ public class CustomLight : MonoBehaviour
             if (shadowMap == null || shadowMap.dimension != TextureDimension.Cube)
             {
                 // Create a 1024x1024 Cubemap with 16-bit Depth
-                shadowMap = new RenderTexture(1024, 1024, 16);
-                shadowMap.dimension = TextureDimension.Cube;
+                shadowMap = new RenderTexture(1024, 1024, 16)
+                {
+                    dimension = TextureDimension.Cube
+                };
                 shadowMap.Create();
             }
 
@@ -54,8 +56,10 @@ public class CustomLight : MonoBehaviour
             // Ensure the RenderTexture is a 2D Texture
             if (shadowMap == null || shadowMap.dimension != TextureDimension.Tex2D)
             {
-                shadowMap = new RenderTexture(1024, 1024, 16);
-                shadowMap.dimension = TextureDimension.Tex2D;
+                shadowMap = new RenderTexture(1024, 1024, 16)
+                {
+                    dimension = TextureDimension.Tex2D
+                };
                 shadowMap.Create();
             }
 

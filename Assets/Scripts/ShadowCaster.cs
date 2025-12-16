@@ -46,6 +46,7 @@ public class ShadowCaster : MonoBehaviour
     {
         if (shadowCam == null || customLight == null) return;
 
+        if (customLight.type == CustomLight.LightType.Point) return;
         // 1. Switch Projection
         if (customLight.type == CustomLight.LightType.Directional)
         {
