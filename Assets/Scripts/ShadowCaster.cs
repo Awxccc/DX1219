@@ -23,7 +23,7 @@ public class ShadowCaster : MonoBehaviour
     {
         customLight = GetComponent<CustomLight>();
 
-        // 1. Initialize the Render Texture based on Light Type
+        // Initialize the Render Texture based on Light Type
         if (customLight.type == CustomLight.LightType.Point)
         {
             // Point lights need a CubeMap (3D Texture)
@@ -42,7 +42,6 @@ public class ShadowCaster : MonoBehaviour
         customLight.shadowMap = shadowRT;
         customLight.castShadows = true;
 
-        // 2. Setup the Internal Shadow Camera
         GameObject camObj = new GameObject("Shadow Cam Internal");
         camObj.transform.SetParent(transform, false);
         camObj.transform.localRotation = Quaternion.identity;
@@ -60,7 +59,6 @@ public class ShadowCaster : MonoBehaviour
         }
         else
         {
-            // CRITICAL: Assign the camera to CustomLight ONLY if it's a Point light.
             // This enables CustomLight.Update() to run UpdateShadowMap() -> RenderToCubemap().
             customLight.shadowCamera = shadowCam;
         }
@@ -109,11 +107,9 @@ public class ShadowCaster : MonoBehaviour
         // Calculate View-Projection Matrix for the Shader
         Matrix4x4 scaleOffset = Matrix4x4.identity;
 
-        // Fix XY: Map -1..1 to 0..1
         scaleOffset.m00 = 0.5f; scaleOffset.m03 = 0.5f;
         scaleOffset.m11 = 0.5f; scaleOffset.m13 = 0.5f;
 
-        // Fix Z: Detect Direct3D vs OpenGL ranges
         bool d3d = SystemInfo.graphicsDeviceVersion.IndexOf("Direct3D") > -1;
         if (d3d)
         {

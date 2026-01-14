@@ -1,7 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-
-[ExecuteInEditMode]
 public class LightingManager : MonoBehaviour
 {
     // Maximum number of custom lights the shader can process at once
