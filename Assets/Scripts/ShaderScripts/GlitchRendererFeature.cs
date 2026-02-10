@@ -32,7 +32,7 @@ public class GlitchRendererFeature : ScriptableRendererFeature
     {
         if (settings.shader == null) settings.shader = Shader.Find("Hidden/Custom/Glitch");
         if (settings.shader != null) _material = CoreUtils.CreateEngineMaterial(settings.shader);
-        
+
         _pass = new GlitchPass(_material)
         {
             renderPassEvent = settings.passEvent
@@ -53,7 +53,7 @@ public class GlitchRendererFeature : ScriptableRendererFeature
     private sealed class GlitchPass : ScriptableRenderPass
     {
         private Material _mat;
-        
+
         private class PassData
         {
             public TextureHandle source;
@@ -89,7 +89,7 @@ public class GlitchRendererFeature : ScriptableRendererFeature
             {
                 builder.UseTexture(source, AccessFlags.Read);
                 builder.SetRenderAttachment(tempTex, 0);
-                
+
                 passData.source = source;
                 passData.material = _mat;
                 passData.intensity = vol.intensity.value;
@@ -101,6 +101,8 @@ public class GlitchRendererFeature : ScriptableRendererFeature
                     data.material.SetFloat("_Intensity", data.intensity);
                     data.material.SetFloat("_ScanlineStrength", data.scanlines);
                     data.material.SetFloat("_NoiseScale", data.noiseScale);
+
+                    // Automatically binds data.source to _BlitTexture
                     Blitter.BlitTexture(ctx.cmd, data.source, new Vector4(1, 1, 0, 0), data.material, 0);
                 });
             }
@@ -110,10 +112,10 @@ public class GlitchRendererFeature : ScriptableRendererFeature
                 builder.UseTexture(tempTex, AccessFlags.Read);
                 builder.SetRenderAttachment(source, 0);
                 passData.source = tempTex;
-                
+
                 builder.SetRenderFunc((PassData data, RasterGraphContext ctx) =>
                 {
-                     Blitter.BlitTexture(ctx.cmd, data.source, new Vector4(1, 1, 0, 0), 0, false);
+                    Blitter.BlitTexture(ctx.cmd, data.source, new Vector4(1, 1, 0, 0), 0, false);
                 });
             }
         }

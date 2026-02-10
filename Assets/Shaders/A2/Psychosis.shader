@@ -2,7 +2,7 @@ Shader "Hidden/Custom/Psychosis"
 {
     Properties
     {
-        _MainTex ("Source", 2D) = "white" {}
+        _MainTex ("Source", 2D) = "white" {} // Kept for compatibility, but unused
         _Intensity ("Intensity", Float) = 0
         _GrainStrength ("Grain Strength", Float) = 0.5
         _VignetteStrength ("Vignette Strength", Float) = 0.5
@@ -22,14 +22,25 @@ Shader "Hidden/Custom/Psychosis"
             HLSLPROGRAM
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Color.hlsl"
+            // Required for GetFullScreenTriangleTexCoord
+            #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl" 
 
             #pragma vertex Vert
             #pragma fragment Frag
 
+            // Unity 6 Blitter uses _BlitTexture, not _MainTex
+            TEXTURE2D(_BlitTexture);
+            SAMPLER(sampler_BlitTexture);
+
+            float _Intensity;
+            float _GrainStrength;
+            float _VignetteStrength;
+            float _AberrationStrength;
+
             struct Attributes
             {
-                float4 positionOS : POSITION;
-                float2 uv : TEXCOORD0;
+                uint vertexID : SV_VertexID;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             struct Varyings
@@ -38,19 +49,15 @@ Shader "Hidden/Custom/Psychosis"
                 float2 uv : TEXCOORD0;
             };
 
-            TEXTURE2D(_MainTex);
-            SAMPLER(sampler_MainTex);
-
-            float _Intensity;
-            float _GrainStrength;
-            float _VignetteStrength;
-            float _AberrationStrength;
-
             Varyings Vert(Attributes input)
             {
                 Varyings output;
-                output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
-                output.uv = input.uv;
+                UNITY_SETUP_INSTANCE_ID(input);
+                
+                // Standard way to handle full screen blits in URP 17+
+                output.positionCS = GetFullScreenTriangleVertexPosition(input.vertexID);
+                output.uv = GetFullScreenTriangleTexCoord(input.vertexID);
+                
                 return output;
             }
 
@@ -62,11 +69,12 @@ Shader "Hidden/Custom/Psychosis"
             half4 Frag(Varyings input) : SV_Target
             {
                 float2 uv = input.uv;
-                
                 float aberration = _AberrationStrength * _Intensity * 0.02;
-                float4 colorR = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, uv - float2(aberration, 0));
-                float4 colorG = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, uv);
-                float4 colorB = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, uv + float2(aberration, 0));
+                
+                // Sample _BlitTexture instead of _MainTex
+                float4 colorR = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, uv - float2(aberration, 0));
+                float4 colorG = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, uv);
+                float4 colorB = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, uv + float2(aberration, 0));
                 
                 float4 finalColor = float4(colorR.r, colorG.g, colorB.b, 1.0);
 
