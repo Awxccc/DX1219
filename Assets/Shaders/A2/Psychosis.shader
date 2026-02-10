@@ -2,32 +2,45 @@ Shader "Hidden/Custom/Psychosis"
 {
     Properties
     {
-        _MainTex ("Source", 2D) = "white" {}
-        _Intensity ("Sanity Loss Intensity", Range(0, 1)) = 0
-        _WarpScale ("Fisheye Warp", Range(0, 1)) = 0.5
-        _Aberration ("Chromatic Aberration", Range(0, 0.05)) = 0.02
-        _GrainPower ("Film Grain", Range(0, 1)) = 0.5
+        _MainTex ("Source", 2D) = "white" {} // Kept for compatibility, but unused
+        _Intensity ("Intensity", Float) = 0
+        _GrainStrength ("Grain Strength", Float) = 0.5
+        _VignetteStrength ("Vignette Strength", Float) = 0.5
+        _AberrationStrength ("Aberration Strength", Float) = 0.5
     }
 
     SubShader
     {
-        Tags { "RenderType"="Opaque" "RenderPipeline" = "UniversalPipeline"}
+        Tags { "RenderType"="Opaque" "RenderPipeline"="UniversalPipeline" }
         LOD 100
-        ZWrite Off Cull Off
+        ZWrite Off Cull Off ZTest Always
 
         Pass
         {
             Name "PsychosisPass"
 
             HLSLPROGRAM
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Color.hlsl"
+            // Required for GetFullScreenTriangleTexCoord
+            #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl" 
+
             #pragma vertex Vert
             #pragma fragment Frag
-            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+
+            // Unity 6 Blitter uses _BlitTexture, not _MainTex
+            TEXTURE2D(_BlitTexture);
+            SAMPLER(sampler_BlitTexture);
+
+            float _Intensity;
+            float _GrainStrength;
+            float _VignetteStrength;
+            float _AberrationStrength;
 
             struct Attributes
             {
-                float4 positionOS : POSITION;
-                float2 uv : TEXCOORD0;
+                uint vertexID : SV_VertexID;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             struct Varyings
@@ -36,69 +49,48 @@ Shader "Hidden/Custom/Psychosis"
                 float2 uv : TEXCOORD0;
             };
 
-            sampler2D _MainTex;
-            float4 _MainTex_ST;
-            
-            // Parameters driven by C#
-            float _Intensity;       // 0 = Normal, 1 = Full Psychosis
-            float _WarpScale;       
-            float _Aberration;
-            float _GrainPower;
-
             Varyings Vert(Attributes input)
             {
                 Varyings output;
-                output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
-                output.uv = input.uv;
+                UNITY_SETUP_INSTANCE_ID(input);
+                
+                // Standard way to handle full screen blits in URP 17+
+                output.positionCS = GetFullScreenTriangleVertexPosition(input.vertexID);
+                output.uv = GetFullScreenTriangleTexCoord(input.vertexID);
+                
                 return output;
             }
 
-            // --- COMPLEXITY FUNCTION: FISHEYE DISTORTION ---
-            float2 DistortUV(float2 uv, float intensity)
+            float Random(float2 uv)
             {
-                float2 center = float2(0.5, 0.5);
-                float2 delta = uv - center;
-                float dist = length(delta);
-                // Non-linear warp based on distance from center
-                float warp = 1.0 - (pow(dist, 2.0) * intensity * _WarpScale);
-                return center + delta * warp;
-            }
-
-            // --- COMPLEXITY FUNCTION: NOISE GENERATOR ---
-            float RandomNoise(float2 uv)
-            {
-                return frac(sin(dot(uv, float2(12.9898, 78.233))) * 43758.5453);
+                return frac(sin(dot(uv, float2(12.9898, 78.233))) * 43758.5453123);
             }
 
             half4 Frag(Varyings input) : SV_Target
             {
-                // 1. Calculate Pulse Speed based on Time
-                float pulse = sin(_Time.y * 3.0) * 0.5 + 0.5; // Oscillates 0 to 1
+                float2 uv = input.uv;
+                float aberration = _AberrationStrength * _Intensity * 0.02;
                 
-                // 2. Apply Fisheye Warp driven by Sanity (_Intensity)
-                float2 distortedUV = DistortUV(input.uv, _Intensity);
-
-                // 3. Chromatic Aberration (RGB Split)
-                // The split widens as Intensity increases
-                float splitAmount = _Aberration * _Intensity * (1.0 + pulse * 0.2);
+                // Sample _BlitTexture instead of _MainTex
+                float4 colorR = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, uv - float2(aberration, 0));
+                float4 colorG = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, uv);
+                float4 colorB = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, uv + float2(aberration, 0));
                 
-                float4 colorR = tex2D(_MainTex, distortedUV - float2(splitAmount, 0));
-                float4 colorG = tex2D(_MainTex, distortedUV);
-                float4 colorB = tex2D(_MainTex, distortedUV + float2(splitAmount, 0));
+                float4 finalColor = float4(colorR.r, colorG.g, colorB.b, 1.0);
 
-                half4 finalColor = half4(colorR.r, colorG.g, colorB.b, 1.0);
+                float luminance = Luminance(finalColor.rgb);
+                float3 bwColor = float3(luminance, luminance, luminance);
+                finalColor.rgb = lerp(finalColor.rgb, bwColor, _Intensity);
 
-                // 4. Add Film Grain
-                // Grain becomes more visible as sanity drops
-                float noise = RandomNoise(input.uv + _Time.x);
-                float grainStrength = _GrainPower * _Intensity;
-                finalColor.rgb += (noise - 0.5) * grainStrength;
+                float2 coord = (uv - 0.5) * 2.0;
+                float rf = sqrt(dot(coord, coord)) * _VignetteStrength * _Intensity;
+                float rf2_1 = rf * rf + 1.0;
+                float e = 1.0 / (rf2_1 * rf2_1);
+                finalColor.rgb *= e;
 
-                // 5. Desaturation / Darkening (Optional Horror Vibe)
-                // Linearly interpolate between Color and a Dark Grey based on intensity
-                float luminance = dot(finalColor.rgb, float3(0.2126, 0.7152, 0.0722));
-                half3 darkGrey = half3(luminance, luminance, luminance) * 0.5;
-                finalColor.rgb = lerp(finalColor.rgb, darkGrey, _Intensity * 0.5);
+                float noise = Random(uv + _Time.y);
+                float3 grain = float3(noise, noise, noise);
+                finalColor.rgb += grain * _GrainStrength * _Intensity * 0.1;
 
                 return finalColor;
             }
