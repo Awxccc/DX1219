@@ -189,16 +189,38 @@ MonoBehaviour:
   active: 1
   type:
     m_OverrideState: 1
-    m_Value: 6
+    m_Value: 0
   intensity:
     m_OverrideState: 1
-    m_Value: 1
+    m_Value: 0
   response:
     m_OverrideState: 1
-    m_Value: 0.5
+    m_Value: 0.8
   texture:
     m_OverrideState: 1
     m_Value: {fileID: 0}
+--- !u!114 &-5908394488744019067
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: GaussianBlurVolume
+  m_EditorClassIdentifier: Assembly-CSharp::GaussianBlurRendererFeature/GaussianBlurVolume
+  active: 1
+  intensity:
+    m_OverrideState: 1
+    m_Value: 0
+  radius:
+    m_OverrideState: 1
+    m_Value: 3
+  downsample:
+    m_OverrideState: 1
+    m_Value: 2
 --- !u!114 &-5520245016509672950
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -214,7 +236,7 @@ MonoBehaviour:
   active: 1
   mode:
     m_OverrideState: 1
-    m_Value: 2
+    m_Value: 0
   neutralHDRRangeReductionMode:
     m_OverrideState: 1
     m_Value: 2
@@ -299,6 +321,47 @@ MonoBehaviour:
   cropToFit:
     m_OverrideState: 1
     m_Value: 1
+--- !u!114 &-3082226669154821646
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: PsychosisVolume
+  m_EditorClassIdentifier: Assembly-CSharp::PsychosisVolume
+  active: 1
+  insanityLevel:
+    m_OverrideState: 0
+    m_Value: 0
+  grainAmount:
+    m_OverrideState: 0
+    m_Value: 0.5
+  vignettePower:
+    m_OverrideState: 0
+    m_Value: 0.5
+  aberrationAmount:
+    m_OverrideState: 0
+    m_Value: 0.5
+--- !u!114 &-2937402844701017975
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: BlackAndWhiteVolume
+  m_EditorClassIdentifier: Assembly-CSharp::BlackAndWhiteVolume
+  active: 1
+  intensity:
+    m_OverrideState: 1
+    m_Value: 0
 --- !u!114 &-1410297666881709256
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -314,10 +377,10 @@ MonoBehaviour:
   active: 1
   normalBias:
     m_OverrideState: 1
-    m_Value: 0.33
+    m_Value: 0.05
   viewBias:
     m_OverrideState: 1
-    m_Value: 0
+    m_Value: 0.1
   scaleBiasWithMinProbeDistance:
     m_OverrideState: 1
     m_Value: 0
@@ -329,7 +392,7 @@ MonoBehaviour:
     m_Value: 1
   leakReductionMode:
     m_OverrideState: 1
-    m_Value: 1
+    m_Value: 2
   minValidDotProductValue:
     m_OverrideState: 1
     m_Value: 0.1
@@ -366,7 +429,7 @@ MonoBehaviour:
     m_Value: 0.9
   intensity:
     m_OverrideState: 1
-    m_Value: 50
+    m_Value: 0
   scatter:
     m_OverrideState: 1
     m_Value: 0.7
@@ -465,7 +528,11 @@ MonoBehaviour:
   - {fileID: -6288072647309666549}
   - {fileID: 7518938298396184218}
   - {fileID: -1410297666881709256}
-  - {fileID: 3218168275870690273}
+  - {fileID: -2937402844701017975}
+  - {fileID: -5908394488744019067}
+  - {fileID: 9149134082374399470}
+  - {fileID: -3082226669154821646}
+  - {fileID: 8322613179238698462}
 --- !u!114 &853819529557874667
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -904,7 +971,7 @@ MonoBehaviour:
     m_Value: {x: 0.5, y: 0.5}
   intensity:
     m_OverrideState: 1
-    m_Value: 0.592
+    m_Value: 0
   smoothness:
     m_OverrideState: 1
     m_Value: 0.2
@@ -939,6 +1006,28 @@ MonoBehaviour:
   scale:
     m_OverrideState: 1
     m_Value: 1
+--- !u!114 &8322613179238698462
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: GlitchVolume
+  m_EditorClassIdentifier: Assembly-CSharp::GlitchVolume
+  active: 1
+  intensity:
+    m_OverrideState: 1
+    m_Value: 0
+  scanlines:
+    m_OverrideState: 0
+    m_Value: 0.5
+  noiseScale:
+    m_OverrideState: 0
+    m_Value: 10
 --- !u!114 &9001657382290151224
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -998,3 +1087,28 @@ MonoBehaviour:
   p2:
     m_OverrideState: 1
     m_Value: 0
+--- !u!114 &9149134082374399470
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: BloomVolume
+  m_EditorClassIdentifier: Assembly-CSharp::BloomRendererFeature/BloomVolume
+  active: 1
+  threshold:
+    m_OverrideState: 1
+    m_Value: 0.9
+  intensity:
+    m_OverrideState: 1
+    m_Value: 1
+  blurRadius:
+    m_OverrideState: 1
+    m_Value: 5
+  downsample:
+    m_OverrideState: 1
+    m_Value: 2
