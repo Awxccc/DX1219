@@ -38,14 +38,14 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _FresnelPower: 0
+    - _FresnelPower: 10
     - _QueueControl: 0
     - _QueueOffset: 0
-    - _WobbleAmplitude: 0
-    - _WobbleFrequency: 0
-    - _WobbleSpeed: 0
+    - _WobbleAmplitude: 0.09
+    - _WobbleFrequency: 0.4
+    - _WobbleSpeed: 10
     m_Colors:
-    - _GhostColor: {r: 0, g: 0, b: 0, a: 1}
+    - _GhostColor: {r: 1, g: 0, b: 0.0463562, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
 --- !u!114 &2226625544570838432
