@@ -335,16 +335,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PsychosisVolume
   active: 1
   insanityLevel:
-    m_OverrideState: 0
+    m_OverrideState: 1
     m_Value: 0
   grainAmount:
-    m_OverrideState: 0
+    m_OverrideState: 1
     m_Value: 0.5
   vignettePower:
-    m_OverrideState: 0
+    m_OverrideState: 1
     m_Value: 0.5
   aberrationAmount:
-    m_OverrideState: 0
+    m_OverrideState: 1
     m_Value: 0.5
 --- !u!114 &-2937402844701017975
 MonoBehaviour:
@@ -1023,10 +1023,10 @@ MonoBehaviour:
     m_OverrideState: 1
     m_Value: 0
   scanlines:
-    m_OverrideState: 0
+    m_OverrideState: 1
     m_Value: 0.5
   noiseScale:
-    m_OverrideState: 0
+    m_OverrideState: 1
     m_Value: 10
 --- !u!114 &9001657382290151224
 MonoBehaviour:
