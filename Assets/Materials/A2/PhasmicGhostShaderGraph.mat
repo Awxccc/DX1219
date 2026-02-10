@@ -43,7 +43,7 @@ Material:
     - _QueueOffset: 0
     - _WobbleAmplitude: 0.1
     - _WobbleFrequency: 1
-    - _WobbleSpeed: 2
+    - _WobbleSpeed: 0.5
     m_Colors:
     - _GhostColor: {r: 0.41509432, g: 0.41509432, b: 0.41509432, a: 0.34117648}
   m_BuildTextureStacks: []

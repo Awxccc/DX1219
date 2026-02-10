@@ -346,6 +346,9 @@ MonoBehaviour:
   aberrationAmount:
     m_OverrideState: 1
     m_Value: 0.5
+  breathingSpeed:
+    m_OverrideState: 1
+    m_Value: 2
 --- !u!114 &-2937402844701017975
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -1028,6 +1031,9 @@ MonoBehaviour:
   noiseScale:
     m_OverrideState: 1
     m_Value: 10
+  colorDrift:
+    m_OverrideState: 1
+    m_Value: 0.05
 --- !u!114 &9001657382290151224
 MonoBehaviour:
   m_ObjectHideFlags: 3
