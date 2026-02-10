@@ -57,7 +57,7 @@ Material:
     - _Ripple_Frequency: 14.52
     - _Ripple_Speed: 2
     - _Ripple_Strength: 5
-    - _WaveSpeed: 0.5
+    - _WaveSpeed: 3
     m_Colors:
     - _Deep: {r: 1, g: 0, b: 0, a: 1}
     - _PlayerPosition: {r: -1.27, g: 0.42, b: -0.69, a: 0}

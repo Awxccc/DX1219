@@ -32,6 +32,22 @@ MonoBehaviour:
   settings:
     passEvent: 550
     shader: {fileID: 4800000, guid: a1d4fd2b7ed3a214ea02ae28742ea1af, type: 3}
+--- !u!114 &-1392668056048552763
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b3e4a28aaf699a74b803cc27ea4f550f, type: 3}
+  m_Name: VolumetricFogRendererFeature
+  m_EditorClassIdentifier: Assembly-CSharp::VolumetricFogRendererFeature
+  m_Active: 1
+  settings:
+    passEvent: 550
+    shader: {fileID: 4800000, guid: 622b4b8157ec9cf43a6c146197e6f0d2, type: 3}
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -60,9 +76,10 @@ MonoBehaviour:
   - {fileID: 7833122117494664109}
   - {fileID: -1533988443958433784}
   - {fileID: 5982562718170814955}
+  - {fileID: -1392668056048552763}
   - {fileID: 8908478228895114439}
   - {fileID: -8414113810103214340}
-  m_RendererFeatureMap: ad6b866f10d7b46c08a84d3ca32db6eaeb19115f18550653c7249802c045a17bfcde16d111103b8b
+  m_RendererFeatureMap: ad6b866f10d7b46c08a84d3ca32db6eaeb19115f18550653c534311dc83facecc7249802c045a17bfcde16d111103b8b
   m_UseNativeRenderPass: 1
   xrSystemData: {fileID: 0}
   postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}

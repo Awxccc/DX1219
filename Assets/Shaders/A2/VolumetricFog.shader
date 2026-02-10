@@ -1,158 +1,181 @@
-Shader "Custom/VolumetricFog_URP"
+Shader "Hidden/Custom/VolumetricFogGlobal"
 {
     Properties
     {
-        _FogColor ("Fog Color", Color) = (1,1,1,1)
-        _InsanityColor ("Insanity Fog Color", Color) = (0.8, 0, 0, 1) 
-        _Density ("Density", Range(0, 5)) = 0.5
-        _StepSize ("Step Size", Range(0.01, 0.5)) = 0.1
-        _NoiseTex ("Noise Texture (3D Look)", 2D) = "white" {}
-        _ScrollSpeed ("Flow Speed", Vector) = (0.1, 0.05, 0, 0)
+        _MainTex("Source", 2D) = "white" {}
     }
 
     SubShader
     {
-        Tags { "Queue"="Transparent+100" "RenderType"="Transparent" "RenderPipeline"="UniversalPipeline" }
-        
-        // Standard Alpha Blending
-        Blend SrcAlpha OneMinusSrcAlpha
-        ZWrite Off
-        
-        // Cull Front means we render the BACK faces of the cube.
-        // This allows us to walk INSIDE the cube and still see the fog.
-        Cull Front 
+        Tags { "RenderType" = "Opaque" "RenderPipeline" = "UniversalPipeline" }
+        LOD 100
+        ZWrite Off Cull Off ZTest Always
 
         Pass
         {
-            Name "VolumetricFog"
-            Tags { "LightMode" = "UniversalForward" }
+            Name "VolumetricFogPass"
 
             HLSLPROGRAM
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
-            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
+            #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
 
-            #pragma vertex vert
-            #pragma fragment frag
+            #pragma vertex Vert
+            #pragma fragment Frag
 
-            // This variable is set by SanityController.cs
+            TEXTURE2D(_BlitTexture);
+            SAMPLER(sampler_BlitTexture);
+
+            // --- Uniforms from C# ---
+            float _Intensity;
+            float4 _FogColor;
+            float4 _InsanityColor;
+            float _FogDensity;
+            float _NoiseScale;
+            float _Speed;
+            float _HeightFalloff; // How fast fog fades as you go up
+            float _BaseHeight;    // The y-level where fog is thickest
+            float _MaxDistance;   // Max distance to raymarch
+            
+            // Global variable from SanityController
             uniform float _GlobalSanity; 
 
-            struct appdata
+            struct Attributes
             {
-                float4 vertex : POSITION;
+                uint vertexID : SV_VertexID;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
+            };
+
+            struct Varyings
+            {
+                float4 positionCS : SV_POSITION;
                 float2 uv : TEXCOORD0;
+                float3 viewVector : TEXCOORD1;
             };
 
-            struct v2f
+            Varyings Vert(Attributes input)
             {
-                float4 pos : SV_POSITION;
-                float3 localPos : TEXCOORD0;
-                float3 worldPos : TEXCOORD1;
-            };
-
-            CBUFFER_START(UnityPerMaterial)
-                float4 _FogColor;
-                float4 _InsanityColor;
-                float _Density;
-                float _StepSize;
-                float4 _ScrollSpeed;
-                float4 _NoiseTex_ST;
-            CBUFFER_END
-
-            sampler2D _NoiseTex;
-
-            v2f vert (appdata v)
-            {
-                v2f o;
-                VertexPositionInputs vertexInput = GetVertexPositionInputs(v.vertex.xyz);
-                o.pos = vertexInput.positionCS;
-                o.worldPos = vertexInput.positionWS;
-                o.localPos = v.vertex.xyz;
-                return o;
+                Varyings output;
+                UNITY_SETUP_INSTANCE_ID(input);
+                output.positionCS = GetFullScreenTriangleVertexPosition(input.vertexID);
+                output.uv = GetFullScreenTriangleTexCoord(input.vertexID);
+                
+                // Calculate View Vector for World Position Reconstruction
+                // This allows us to get the world position of every pixel cheaply
+                float3 viewVector = mul(unity_CameraInvProjection, float4(output.uv * 2.0 - 1.0, 0.0, -1.0)).xyz;
+                output.viewVector = mul(unity_CameraToWorld, float4(viewVector, 0.0)).xyz;
+                
+                return output;
             }
 
-            // Ray-Box Intersection
-            float2 RayBoxDst(float3 boundsMin, float3 boundsMax, float3 rayOrigin, float3 rayDir)
+            // --- Procedural 3D Noise Function ---
+            // A simple 3D hash function to simulate volumetric noise without a texture
+            float Hash(float3 p)
             {
-                float3 t0 = (boundsMin - rayOrigin) / rayDir;
-                float3 t1 = (boundsMax - rayOrigin) / rayDir;
-                float3 tmin = min(t0, t1);
-                float3 tmax = max(t0, t1);
-                float dstA = max(max(tmin.x, tmin.y), tmin.z);
-                float dstB = min(min(tmax.x, tmax.y), tmax.z);
-                float dstToBox = max(0, dstA);
-                float dstInsideBox = max(0, dstB - dstToBox);
-                return float2(dstToBox, dstInsideBox);
+                p = frac(p * 0.3183099 + 0.1);
+                p *= 17.0;
+                return frac(p.x * p.y * p.z * (p.x + p.y + p.z));
             }
 
-            float4 frag (v2f i) : SV_Target
+            float Noise3D(float3 x)
             {
-                // 1. Setup Ray
-                float3 rayOrigin = GetCameraPositionWS();
+                float3 i = floor(x);
+                float3 f = frac(x);
+                f = f * f * (3.0 - 2.0 * f);
                 
-                // We need the local position of the camera to calculate entry/exit in Object Space
-                // Transform World Camera Pos -> Object Space
-                float3 rayOriginLocal = TransformWorldToObject(rayOrigin);
-                float3 rayDirLocal = normalize(i.localPos - rayOriginLocal);
+                return lerp(lerp(lerp(Hash(i + float3(0,0,0)), Hash(i + float3(1,0,0)), f.x),
+                                 lerp(Hash(i + float3(0,1,0)), Hash(i + float3(1,1,0)), f.x), f.y),
+                            lerp(lerp(Hash(i + float3(0,0,1)), Hash(i + float3(1,0,1)), f.x),
+                                 lerp(Hash(i + float3(0,1,1)), Hash(i + float3(1,1,1)), f.x), f.y), f.z);
+            }
 
-                // 2. Calculate Box Intersection (Unit Cube -0.5 to 0.5)
-                float2 intersection = RayBoxDst(float3(-0.5, -0.5, -0.5), float3(0.5, 0.5, 0.5), rayOriginLocal, rayDirLocal);
-                float dstToBox = intersection.x;
-                float dstInside = intersection.y;
-
-                // If we aren't hitting the box logic correctly, or distance is 0, discard
-                if (dstInside <= 0) discard;
-
-                // 3. Raymarching Setup
-                float3 entryPoint = rayOriginLocal + rayDirLocal * dstToBox;
-                float totalDensity = 0.0;
-                float3 accumulatedColor = float3(0, 0, 0);
-                float distanceTravelled = 0.0;
-                
-                int steps = 25; // Keep low for performance
-                float stepSize = dstInside / steps;
-
-                // Dither to hide banding (random offset)
-                float dither = frac(sin(dot(i.pos.xy, float2(12.9898, 78.233))) * 43758.5453);
-                float3 currentPos = entryPoint + rayDirLocal * stepSize * dither;
-
-                // 4. Sanity Logic
-                float insanity = clamp(_GlobalSanity, 0, 1);
-                float speedMult = 1.0 + (insanity * 3.0);
-                float3 currentFogColor = lerp(_FogColor.rgb, _InsanityColor.rgb, insanity);
-
-                // 5. Lighting (URP)
-                Light mainLight = GetMainLight();
-                float3 lightDir = normalize(TransformWorldToObjectDir(mainLight.direction)); 
-                float lightIntensity = saturate(dot(float3(0, 1, 0), lightDir) * 0.5 + 0.5);
-                float3 lightColor = mainLight.color;
-
-                // 6. Loop
-                for (int j = 0; j < steps; j++)
+            // FBM (Fractal Brownian Motion) for fluffier clouds
+            float FBM(float3 p)
+            {
+                float f = 0.0;
+                float w = 0.5;
+                for (int i = 0; i < 3; i++) // 3 Octaves
                 {
-                    if (distanceTravelled >= dstInside) break;
+                    f += w * Noise3D(p);
+                    p *= 2.0;
+                    w *= 0.5;
+                }
+                return f;
+            }
 
-                    // Scroll noise
-                    float2 noiseUV = currentPos.xz * 2.0 + _Time.y * _ScrollSpeed.xy * speedMult;
-                    float noise = tex2D(_NoiseTex, noiseUV).r; // Standard tex2D for sampler2D
+            half4 Frag(Varyings input) : SV_Target
+            {
+                // 1. Reconstruct World Position
+                float depth = SampleSceneDepth(input.uv);
+                float linearDepth = Linear01Depth(depth, _ZBufferParams);
+
+                // If depth is skybox (usually 0 or 1 depending on platform), clamp distance
+                // We create a "virtual" far plane for the fog if looking at the sky
+                float viewLength = length(input.viewVector);
+                float3 viewDir = input.viewVector / viewLength;
+                
+                // Actual distance to the pixel surface
+                float pixelDistance = LinearEyeDepth(depth, _ZBufferParams);
+                
+                // Raymarch Setup
+                float3 camPos = _WorldSpaceCameraPos;
+                
+                // Optimization: Don't march further than _MaxDistance
+                float marchLimit = min(pixelDistance, _MaxDistance);
+                
+                // Sanity Logic
+                float insanity = clamp(_GlobalSanity, 0, 1);
+                float3 targetFogColor = lerp(_FogColor.rgb, _InsanityColor.rgb, insanity);
+                
+                // Raymarch Loop
+                int steps = 12; // Keep low for full-screen performance
+                float stepSize = marchLimit / steps;
+                float3 currentPos = camPos;
+                
+                float accumulatedDensity = 0.0;
+                
+                // Random offset to remove banding (Dithering)
+                float dither = frac(sin(dot(input.uv, float2(12.9898, 78.233))) * 43758.5453);
+                currentPos += viewDir * stepSize * dither;
+
+                [unroll]
+                for(int i = 0; i < steps; i++)
+                {
+                    if(distance(camPos, currentPos) > marchLimit) break;
+
+                    // --- Height Fog Logic ---
+                    // Calculate height factor: exp(-(y - base) * falloff)
+                    float heightFactor = exp(-(currentPos.y - _BaseHeight) * _HeightFalloff);
+                    heightFactor = saturate(heightFactor); // Clamp 0-1
+
+                    // --- 3D Noise Logic ---
+                    float3 noisePos = currentPos * _NoiseScale + float3(_Time.y * _Speed, 0, 0);
+                    // Warp noise based on sanity (world gets chaotic)
+                    if(insanity > 0.5) noisePos += Noise3D(noisePos * 2.0) * insanity;
                     
-                    if (noise > 0.1)
-                    {
-                        float density = noise * _Density * stepSize;
-                        totalDensity += density;
-                        
-                        // Add Color + Light
-                        accumulatedColor += currentFogColor * lightColor * density * lightIntensity;
-                    }
-
-                    currentPos += rayDirLocal * stepSize;
-                    distanceTravelled += stepSize;
+                    float noise = FBM(noisePos);
+                    
+                    // Combine
+                    float localDensity = heightFactor * noise * _FogDensity;
+                    
+                    // Accumulate
+                    accumulatedDensity += localDensity * stepSize;
+                    
+                    // March forward
+                    currentPos += viewDir * stepSize;
                 }
 
-                float transmittance = exp(-totalDensity);
+                // Beer's Law for Transmittance
+                float transmittance = exp(-accumulatedDensity * _Intensity);
                 
-                // Return final color
-                return float4(accumulatedColor, 1.0 - transmittance);
+                // Sample original screen color
+                float4 sceneColor = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, input.uv);
+                
+                // Final blend
+                // We blend the fog color based on how much light got blocked (transmittance)
+                float3 finalColor = lerp(targetFogColor, sceneColor.rgb, transmittance);
+
+                return float4(finalColor, 1.0);
             }
             ENDHLSL
         }
