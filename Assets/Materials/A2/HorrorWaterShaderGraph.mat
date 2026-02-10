@@ -51,17 +51,17 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _Depth_Density: 1
+    - _Depth_Density: -0.71
     - _QueueControl: 0
     - _QueueOffset: 0
     - _Ripple_Frequency: 14.52
     - _Ripple_Speed: 2
     - _Ripple_Strength: 5
-    - _WaveSpeed: 3
+    - _WaveSpeed: 0.5
     m_Colors:
-    - _Deep: {r: 1, g: 0, b: 0, a: 1}
+    - _Deep: {r: 0.41972235, g: 0.6100392, b: 0.6792453, a: 1}
     - _PlayerPosition: {r: -1.27, g: 0.42, b: -0.69, a: 0}
     - _Player_Position: {r: 0, g: 0, b: 0, a: 0}
-    - _Shallow: {r: 1, g: 0, b: 0, a: 1}
+    - _Shallow: {r: 0, g: 0.26774764, b: 1, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

@@ -365,6 +365,46 @@ MonoBehaviour:
   intensity:
     m_OverrideState: 1
     m_Value: 0
+--- !u!114 &-1888471792189757985
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: VolumetricFogVolume
+  m_EditorClassIdentifier: Assembly-CSharp::VolumetricFogVolume
+  active: 1
+  intensity:
+    m_OverrideState: 1
+    m_Value: 0
+  fogColor:
+    m_OverrideState: 1
+    m_Value: {r: 0.5, g: 0.5, b: 0.5, a: 1}
+  insanityColor:
+    m_OverrideState: 1
+    m_Value: {r: 1, g: 0, b: 0, a: 1}
+  density:
+    m_OverrideState: 1
+    m_Value: 0.5
+  noiseScale:
+    m_OverrideState: 1
+    m_Value: 0.1
+  speed:
+    m_OverrideState: 1
+    m_Value: 0.5
+  baseHeight:
+    m_OverrideState: 1
+    m_Value: 0
+  heightFalloff:
+    m_OverrideState: 1
+    m_Value: 0.5
+  maxDistance:
+    m_OverrideState: 1
+    m_Value: 100
 --- !u!114 &-1410297666881709256
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -536,6 +576,7 @@ MonoBehaviour:
   - {fileID: 9149134082374399470}
   - {fileID: -3082226669154821646}
   - {fileID: 8322613179238698462}
+  - {fileID: -1888471792189757985}
 --- !u!114 &853819529557874667
 MonoBehaviour:
   m_ObjectHideFlags: 3

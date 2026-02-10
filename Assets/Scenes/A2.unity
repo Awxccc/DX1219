@@ -683,6 +683,7 @@ GameObject:
   - component: {fileID: 983940698}
   - component: {fileID: 983940697}
   - component: {fileID: 983940701}
+  - component: {fileID: 983940702}
   m_Layer: 0
   m_Name: Sphere
   m_TagString: Untagged
@@ -796,6 +797,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::InteractiveWaterAgent
   player: {fileID: 983940700}
   waterMaterial: {fileID: 2100000, guid: bebcdde137e0ece42ae2ef99217a34ae, type: 2}
+--- !u!114 &983940702
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 983940696}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 747b25d959c1b8c4e9ad7296bdb5b092, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RotatingScript
+  rotatingSpeed: 20
 --- !u!1 &1598067764
 GameObject:
   m_ObjectHideFlags: 0
@@ -1063,9 +1077,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 81244c01c7bc8f24d928ce0ba66356eb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SanityController
-  manualOverride: 0
   currentSanity: 1
   sanityDrainRate: 0
+  recoveryRate: 0.02
   globalVolume: {fileID: 2106287599}
 --- !u!4 &1731094649
 Transform:
@@ -1148,7 +1162,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  - {fileID: 2100000, guid: fc85f6a2ecb1c4b4994b8dee80c53953, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

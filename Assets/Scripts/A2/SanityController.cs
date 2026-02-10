@@ -2,60 +2,53 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 
+[ExecuteAlways]
 public class SanityController : MonoBehaviour
 {
-    [Header("Debug")]
-    [Tooltip("If checked, the script will NOT update values, allowing you to edit them manually.")]
-    public bool manualOverride = false;
-
     [Header("Sanity Settings")]
     [Range(0f, 1f)] public float currentSanity = 1.0f; // 1 = Sane, 0 = Insane
     public float sanityDrainRate = 0.05f;
+    public float recoveryRate = 0.02f;
 
     [Header("Effect References")]
     public Volume globalVolume;
 
-    // Internal references
+    // Internal references to your custom volume components
     private PsychosisVolume _psychosis;
     private GlitchVolume _glitch;
+
+    // --- ADDED: Reference to Volumetric Fog ---
     private VolumetricFogVolume _volumetricFog;
 
     private float _heartbeatTimer;
 
-    void Start()
-    {
-        // Ensure variable is set at least once on start
-        Shader.SetGlobalFloat("_GlobalSanity", 1.0f - currentSanity);
-    }
-
     void Update()
     {
-        // 1. Sanity Logic (Always runs logic, but only updates visuals if not overridden)
-        if (Application.isPlaying && !manualOverride)
+        // 1. Manage Sanity Logic (Only in Play Mode)
+        if (Application.isPlaying)
         {
+            // Example: Drain sanity automatically over time
             currentSanity = Mathf.Clamp01(currentSanity - (sanityDrainRate * Time.deltaTime));
         }
 
-        // 2. Set Global Shader Variable (Always update this so walls/water work)
+        // 2. Set Global Shader Variable for ALL shaders to use (Water, Fog, Walls)
+        // This ensures the Walls and Fog shaders get the data even if the Volume fails
         Shader.SetGlobalFloat("_GlobalSanity", 1.0f - currentSanity);
 
         // 3. Drive Post Processing
-        if (!manualOverride)
-        {
-            UpdatePostProcessing();
-        }
+        UpdatePostProcessing();
     }
 
     void UpdatePostProcessing()
     {
         if (globalVolume == null || globalVolume.profile == null) return;
 
-        // Try to get our custom components
+        // Try to get our custom components if we haven't yet
         if (_psychosis == null) globalVolume.profile.TryGet(out _psychosis);
         if (_glitch == null) globalVolume.profile.TryGet(out _glitch);
-        if (_volumetricFog == null) globalVolume.profile.TryGet(out _volumetricFog);
+        if (_volumetricFog == null) globalVolume.profile.TryGet(out _volumetricFog); // --- ADDED ---
 
-        float insanityFactor = 1.0f - currentSanity;
+        float insanityFactor = 1.0f - currentSanity; // 0 = Calm, 1 = Horror
 
         // --- Drive Psychosis ---
         if (_psychosis != null)
@@ -63,6 +56,7 @@ public class SanityController : MonoBehaviour
             _psychosis.active = insanityFactor > 0.01f;
             _psychosis.insanityLevel.value = insanityFactor;
 
+            // Heartbeat Logic
             float pulseSpeed = Mathf.Lerp(1.0f, 4.0f, insanityFactor);
             _heartbeatTimer += Time.deltaTime * pulseSpeed;
 
@@ -94,11 +88,18 @@ public class SanityController : MonoBehaviour
             }
         }
 
-        // --- Drive Fog ---
+        // --- ADDED: Drive Volumetric Fog ---
         if (_volumetricFog != null)
         {
+            // Force the fog to be Active so it doesn't disappear
             _volumetricFog.active = true;
-            _volumetricFog.intensity.value = 1.0f;
+
+            // Ensure Intensity is at least 1 (or whatever base value you want)
+            // If we are insane, we can make it thicker or change parameters
+            _volumetricFog.intensity.value = 0.0f;
+
+            // Optional: You can drive other parameters here too if you want dynamic changes
+            // _volumetricFog.density.value = Mathf.Lerp(0.5f, 1.0f, insanityFactor);
         }
     }
 }
